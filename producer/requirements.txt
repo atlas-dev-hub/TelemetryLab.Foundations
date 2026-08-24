@@ -1,2 +1,8 @@
-grpcio==1.68.1
-protobuf==5.29.1
+# Pinned to match the pre-generated protobuf stubs in _generated/.
+#
+# The stubs were produced by protoc gencode 6.31.1, and protobuf enforces a
+# same-major-version rule between gencode and runtime. A 5.x runtime fails at
+# import with a VersionError that reads like a bug in the lab rather than a
+# version pin — so this pin is load-bearing, not housekeeping.
+grpcio>=1.71,<2
+protobuf>=6.31.1,<7
