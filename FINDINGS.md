@@ -7,7 +7,10 @@ branch, opens a PR in their own repo, and a bot validates it, comments, advances
 the README and merges. Proven end to end, twice, in a real repository.
 
 Test run: [`federicadonald/lab-learner-test`](https://github.com/federicadonald/lab-learner-test)
-— two modules, two PRs, both merged by the bot.
+— three modules, three PRs, all validated and merged by the bot, with the run
+URL for each recorded as evidence.
+
+Both repositories are **private** while this is built out.
 
 ---
 
@@ -35,7 +38,7 @@ That was the single biggest risk to the design, and it is closed.
 A nine-module course is roughly 20 minutes of compute per learner, all of it on
 GitHub's free tier.
 
-## Five things it broke on
+## Six things it broke on
 
 Every one of these would have hit the first real learner.
 
@@ -80,7 +83,24 @@ Now the producer emits a machine-readable `LAB_SESSION=` line (printed only
 after a successful `CreateSession` round-trip), and Kafka topic offsets confirm
 the data independently.
 
-### 5. The bot raced itself
+### 5. Nanosecond timestamps are a BigInt problem in JavaScript
+
+Building module 3's contiguity check surfaced a bug in our own consumer that
+would have been very hard to diagnose from a bug report.
+
+After fixing the deliberately broken producer, the check still reported 121
+discontinuities — every one of them an overlap of **exactly 256 ns**. That
+consistency was the clue: real timing drift is not uniform.
+
+Nanosecond epoch timestamps are around 1.79 × 10¹⁸. `Number.MAX_SAFE_INTEGER`
+is 9.0 × 10¹⁵. Converting the timestamp to a double quantises it to 256 ns
+steps, so every batch appeared to overlap the previous one by one quantum.
+
+A precision bug in the consumer, presenting as a phantom bug in the producer —
+and it would have made module 3 unpassable no matter what the learner did. The
+contiguity arithmetic is now BigInt throughout.
+
+### 6. The bot raced itself
 
 The bot commits the advance to the PR branch, then merges the PR. That push
 makes the head SHA GitHub knows about stale, and `gh pr merge` fails with *"Head
