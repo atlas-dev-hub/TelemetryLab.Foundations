@@ -4,3 +4,5 @@ __pycache__/
 .lab/.consumed
 .lab/my-consumer.json
 .lab/reference-solutions/
+site/dist/
+site/public/lap.json
