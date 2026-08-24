@@ -1,0 +1,17 @@
+{
+  "name": "atlas-lab-consumer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reads the telemetry stream back out of Kafka - the second consumer on the same data.",
+  "scripts": {
+    "start": "node src/consume.js",
+    "probe": "node src/probe.js",
+    "latejoin": "node src/latejoin.js"
+  },
+  "dependencies": {
+    "@kafkajs/zstd": "^0.1.1",
+    "kafkajs": "^2.2.4",
+    "protobufjs": "^7.4.0"
+  }
+}

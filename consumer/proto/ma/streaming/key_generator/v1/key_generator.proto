@@ -1,0 +1,35 @@
+// <copyright file="key_generator.proto" company="Motion Applied Ltd.">
+// Copyright (c) 2025, Motion Applied Ltd.
+
+syntax = "proto3";
+
+package ma.streaming.key_generator.v1;
+
+option csharp_namespace = "MA.Streaming.KeyGenerator";
+option optimize_for = LITE_RUNTIME;
+
+// Unique key generator service
+service UniqueKeyGeneratorService {
+    // Generate a unique key which can be used to uniquely identify entities
+    rpc GenerateUniqueKey (GenerateUniqueKeyRequest) returns (GenerateUniqueKeyResponse);
+}
+
+// Request for generating a unique key
+message GenerateUniqueKeyRequest {
+    KeyType type = 1;
+}
+ 
+// Response to a request for generating a unique key
+message GenerateUniqueKeyResponse {
+    oneof key {
+        string string_key = 1;
+        uint64 ulong_key = 2;
+    }
+}
+
+// The type of key that should be generated
+enum KeyType {
+    KEY_TYPE_UNSPECIFIED = 0;
+    KEY_TYPE_ULONG = 1;
+    KEY_TYPE_STRING = 2;
+}

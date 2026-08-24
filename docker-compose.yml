@@ -1,0 +1,98 @@
+# The ATLAS Telemetry Lab stack.
+#
+# Four services and a workspace. Everything here is free and licence-free -
+# the Stream API and Key Generator images are published publicly by Motion
+# Applied, and Kafka is Apache Kafka in KRaft mode.
+#
+# Measured footprint at idle: ~754 MiB total, under 5% CPU. The two ATLAS
+# services account for 61 MiB of that; the rest is Kafka and the optional UI.
+# It fits the smallest 2-core / 4 GB Codespace with room to spare.
+
+name: atlas-telemetry-lab
+
+services:
+  # The workspace you actually work in. In a Codespace or VS Code Dev
+  # Container this is the container your terminal lives in, on the same
+  # network as everything else - so the Stream API is reachable at
+  # `stream-api:13579` rather than through a published port.
+  workspace:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces:cached
+    command: sleep infinity
+    depends_on:
+      stream-api:
+        condition: service_started
+    environment:
+      STREAM_API_ADDRESS: stream-api:13579
+      KEY_GENERATOR_ADDRESS: key-generator:15379
+      KAFKA_BOOTSTRAP: kafka:9094
+
+  kafka:
+    image: apache/kafka:4.2.0
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: "atlas-telemetry-lab"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-kafka-logs
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Writes structured telemetry packets into Kafka. Producers talk gRPC to
+  # this; they never write to Kafka directly. That matters - writing straight
+  # to a topic skips session and format registration, and ATLAS will never
+  # see the data.
+  stream-api:
+    image: atlasplatformdocker/streaming-proto-server-host:latest
+    ports:
+      - "13579:13579"
+      - "10010:10010"
+    environment:
+      CONFIG_PATH: /app/Configs/AppConfig.json
+      AUTO_START: "true"
+      LOG_LEVEL: Information
+      METRICS_PORT: "10010"
+    volumes:
+      - ./configs:/app/Configs
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # Hands out unique ids for sessions and configuration packets.
+  key-generator:
+    image: atlasplatformdocker/keygenerator-proto-server:latest
+    ports:
+      - "15379:15379"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # Optional. Browse the raw topics to see that the packets are really there.
+  # It is the heaviest thing in the stack (~332 MiB) and nothing depends on
+  # it, so if you are tight on memory: docker compose stop kafka-ui
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    profiles: ["ui"]
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: atlas-telemetry-lab
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      kafka:
+        condition: service_healthy

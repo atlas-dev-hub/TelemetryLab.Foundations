@@ -1,0 +1,498 @@
+// <copyright file="api.proto" company="Motion Applied Ltd.">
+// Copyright (c) 2025, Motion Applied Ltd.
+
+syntax = "proto3";
+
+import "ma/streaming/open_data/v1/open_data.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+package ma.streaming.api.v1;
+
+option csharp_namespace = "MA.Streaming.API";
+option optimize_for = LITE_RUNTIME;
+
+//////////////////////////////////////
+//		Packet Writer Section		//
+//////////////////////////////////////
+
+// Details for the packet being written
+message DataPacketDetails {
+	// Packet to write
+	ma.streaming.open_data.v1.Packet message = 1;
+	// Data source for this packet
+	string data_source = 2;
+	// Stream name to which to write
+	string stream = 3;
+	// Unique session key of the session to which to write
+	string session_key = 4;
+}
+
+// Request for writing a data packet to the stream
+message WriteDataPacketRequest {
+	DataPacketDetails detail = 1;
+}
+
+// Request for writing a stream of data packets
+message WriteDataPacketsRequest {
+	repeated DataPacketDetails details = 1;
+}
+
+// Info type
+enum InfoType {
+  INFO_TYPE_UNSPECIFIED = 0; // Unspecified
+  INFO_TYPE_SESSION_INFO = 1; // Session info
+  INFO_TYPE_SYSTEM_STATUS = 2; // System status
+}
+
+// Request for writing an info packet to the stream
+message WriteInfoPacketRequest {
+	// Packet to write
+	ma.streaming.open_data.v1.Packet message = 1;
+	// Type for this packet
+	InfoType type = 2;
+}
+
+// Request for writing a stream of info packets
+message WriteInfoPacketsRequest {
+	// Packet to write
+	ma.streaming.open_data.v1.Packet message = 1;
+	// Type for this packet
+	InfoType type = 2;
+}
+
+// Packet writer service.
+service PacketWriterService {
+	// Write a packet for a specified data source
+	rpc WriteDataPacket(WriteDataPacketRequest) returns (WriteDataPacketResponse);
+	// Continuously write a stream of data packets
+	rpc WriteDataPackets(stream WriteDataPacketsRequest) returns (WriteDataPacketsResponse);
+	// Write an info packet of a specified type
+	rpc WriteInfoPacket(WriteInfoPacketRequest) returns (WriteInfoPacketResponse);
+	// Continuously write a stream of info packets
+	rpc WriteInfoPackets(stream WriteInfoPacketsRequest) returns (WriteInfoPacketsResponse);
+}
+
+// Response to a request for writing a data packet to the stream
+message WriteDataPacketResponse {
+}
+
+// Response to a request for writing a stream of data packets
+message WriteDataPacketsResponse {
+}
+
+// Response to a request for writing an info packet to the stream
+message WriteInfoPacketResponse {
+}
+
+// Response to a request for writing a stream of info packets
+message WriteInfoPacketsResponse {
+}
+
+//////////////////////////////////////
+//		Data Format Section			//
+//////////////////////////////////////
+
+// Request for a data format ID for a given set of parameters
+message GetParameterDataFormatIdRequest {
+	// Data source for which this format is to be used
+	string data_source = 1;
+	// Ordered of parameter identifiers (the same parameters in a different order is a different id)
+	repeated string parameters = 2;
+}
+
+// Response for a data format request
+message GetParameterDataFormatIdResponse {
+	// Data format identifier
+	uint64 data_format_identifier = 1;
+}
+
+// Request for a data format ID for a given event
+message GetEventDataFormatIdRequest {
+	// Data source for which this format is to be used
+	string data_source = 1;
+	// Event identifier
+	string event = 2;
+}
+
+// Response for a data format request
+message GetEventDataFormatIdResponse {
+	// Data format identifier
+	uint64 data_format_identifier = 1;
+}
+
+// Data format manager service
+service DataFormatManagerService {
+	// Request a data format ID for a set of parameters
+	rpc GetParameterDataFormatId(GetParameterDataFormatIdRequest) returns (GetParameterDataFormatIdResponse);
+	// Request a data format ID for an event
+	rpc GetEventDataFormatId(GetEventDataFormatIdRequest) returns (GetEventDataFormatIdResponse);
+	// Request a list of paramters for a given data format ID
+	rpc GetParametersList(GetParametersListRequest) returns (GetParametersListResponse);
+	// Request an event for a given data format ID
+	rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+}
+
+// Request for a list of parameters from a data format ID
+message GetParametersListRequest {
+	// Data source for which this format is used
+	string data_source = 1;
+	// Data format identifier
+	uint64 data_format_identifier = 2;
+}
+
+// Response for a parameter list request
+message GetParametersListResponse {
+	// List of parameters
+	repeated string parameters = 1;
+}
+
+// Request for an event from a data format ID
+message GetEventRequest {
+	// Data source for which this format is used
+	string data_source = 1;
+	// Data format identifier
+	uint64 data_format_identifier = 2;
+}
+
+// Response for an event request
+message GetEventResponse {
+	// Event identifier
+	string event = 1;
+}
+
+//////////////////////////////////////
+//		Connection Section			//
+//////////////////////////////////////
+
+// Connection manager service
+// Open and close Connections
+// Connections maintain the current offset position
+service ConnectionManagerService {
+	// Create a new connection
+	rpc NewConnection(NewConnectionRequest) returns (NewConnectionResponse);
+	// Get an existing connection
+	rpc GetConnection(GetConnectionRequest) returns (GetConnectionResponse);
+	// Close connection
+	rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse);
+}
+
+// A connection identifier
+message Connection {
+	// For internal use only - do not modify this
+	int64 id = 1;
+}
+
+// Details of a connection
+message ConnectionDetails {
+	// Data source to read from
+	string data_source = 1;
+	// Session key of the session to read (can be ommitted if sessions are not being used)
+	string session_key = 2;
+	// Streams to read (can be ommitted if all streams are required)
+	repeated string streams = 3;
+	// Offset from which to start for each stream
+	// -1 = Latest, 0 = Earliest (default)
+	repeated int64 stream_offsets = 4;
+	// Offset from which to start for the main data source topic
+	int64 main_offset = 5;
+	// Offset from which to start for the data source essentials topic
+	int64 essentials_offset = 6;
+	// to specify exclusion of the main stream from reading
+	bool exclude_main_stream = 7;
+	// Consumer group to use for this connection
+	string consumer_group = 8;
+}
+
+// Request for a new (read) connection
+message NewConnectionRequest {
+	// The connection details
+	ConnectionDetails details = 1;
+}
+
+// Response to a new connection request
+message NewConnectionResponse {
+	// Identifier for the connection
+	Connection connection = 1;
+}
+
+// Request for details of an existing connection
+message GetConnectionRequest {
+	// Identifier for the connection
+	Connection connection = 1;
+}
+
+// Response to a get connection request
+message GetConnectionResponse {
+	// The connection details
+	ConnectionDetails details = 1;
+}
+
+// Request to close an existing connection
+message CloseConnectionRequest {
+	// Identifier for the connection
+	Connection connection = 1;
+}
+
+// Response to a close connection request
+message CloseConnectionResponse {
+	// Whether the close connection request succeeded
+	bool success = 1;
+}
+
+//////////////////////////////////////
+//		Packet Reader Section		//
+//////////////////////////////////////
+
+// Read packets
+service PacketReaderService {
+	// Continuously read all packets from the specified connection
+	rpc ReadPackets(ReadPacketsRequest) returns (stream ReadPacketsResponse);
+	// Continuously read all of the essential packets from this connection
+	rpc ReadEssentials(ReadEssentialsRequest) returns (stream ReadEssentialsResponse);
+	// Continuously read all data packets containing any of the specified parameters or events
+	// Only data packets will be returned (i.e. no config, metadata etc)
+	rpc ReadDataPackets(ReadDataPacketsRequest) returns (stream ReadDataPacketsResponse);
+}
+
+message ReadPacketsRequest {
+	Connection connection = 1;
+}
+
+message ReadPacketsResponse {
+	repeated PacketResponse response = 1;
+}
+
+message ReadEssentialsRequest {
+	Connection connection = 1;
+}
+
+message ReadEssentialsResponse {
+	repeated PacketResponse response = 1;
+}
+
+message ReadDataPacketsRequest {
+	DataPacketRequest request = 1;
+}
+
+message ReadDataPacketsResponse {
+	repeated PacketResponse response = 1;
+}
+
+// Request for reading parameters
+message DataPacketRequest {
+	// Connection to Read
+	Connection connection = 1;
+	// Parameters to include (regular expressions)
+	repeated string include_parameters = 2;
+	// Parameters to exclude (regular expressions)
+	repeated string exclude_parameters = 3;
+	// Events to include (regular expressions)
+	repeated string include_events = 4;
+	// Events to exclude (regular expressions)
+	repeated string exclude_events = 5;
+	// Include markers?
+	bool include_markers = 6;
+}
+
+// The return from a packet read
+message PacketResponse {
+	// The packet that was read
+	ma.streaming.open_data.v1.Packet packet = 1;
+	// The stream the packet was read from
+	string stream = 2;
+	// the time that packet submit in the broker topic partition
+	google.protobuf.Timestamp submit_time = 3;
+}
+
+//////////////////////////////////////////
+//		Session Management Section		//
+//////////////////////////////////////////
+
+// Manage sessions
+service SessionManagementService {
+	// Create a new session. Returns the unique session key
+	rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);	
+	// End the session for a given unique session key
+	rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+	// Get a list of the current sessions within the broker
+	rpc GetCurrentSessions(GetCurrentSessionsRequest) returns (GetCurrentSessionsResponse);
+	// Get the info for a session
+	rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoResponse);
+	// Continuously notifies the client when a session starts
+	rpc GetSessionStartNotification(GetSessionStartNotificationRequest) returns (stream GetSessionStartNotificationResponse);
+	// Continuously notifies the client when a session ends
+	rpc GetSessionStopNotification(GetSessionStopNotificationRequest) returns (stream GetSessionStopNotificationResponse);
+	// Update the session identifier given its unique session key
+	rpc UpdateSessionIdentifier(UpdateSessionIdentifierRequest) returns (UpdateSessionIdentifierResponse);
+	// Add associate session to a session given its unique session key
+	rpc AddAssociateSession(AddAssociateSessionRequest) returns (AddAssociateSessionResponse);
+	// Update the session details for a session given its unique session key
+	rpc UpdateSessionDetails(UpdateSessionDetailsRequest) returns (UpdateSessionDetailsResponse);
+}
+
+// Request for the creation of a new session
+message CreateSessionRequest {
+	// Data Source name
+	string data_source = 1;
+	// Session type (defaults to "Session")
+	string type = 2;
+	// Version (defaults to 1)
+	uint32 version = 3;
+	// Difference between UTC time and local standard time in the timezone in which the data is recorded (negative for negative longitudes, positive for positive longitudes, defaults to 0)
+	google.protobuf.Duration utc_offset = 4;
+	// Session identifier
+	string identifier = 5;
+	// List of unique session key to associate to the session
+	repeated string associate_session_key = 6;
+	// Session details to update (detail name, detail value)
+	map<string, string> details = 7;
+	// Session Creation Time (if not provided, the server time will be used)
+	google.protobuf.Timestamp creation_time = 8;
+}
+
+// Response to a session creation request
+message CreateSessionResponse {
+	// Unique session key
+	string session_key = 1; 
+	// New session packet
+	ma.streaming.open_data.v1.NewSessionPacket new_session = 2;
+	// Whether the create session  request succeeded
+	bool success = 3;
+}
+
+// Request to end an existing session
+message EndSessionRequest {
+	// Data source name
+	string data_source = 1;
+	// Unique session key
+	string session_key = 2;
+	// Session Termination Time (if not provided, the server time will be used)
+	google.protobuf.Timestamp termination_time = 3;
+}
+
+// Response to the termination of a session
+message EndSessionResponse {
+	// End of session packet
+	ma.streaming.open_data.v1.EndOfSessionPacket end_session = 2;
+	// Whether the end session request succeeded
+	bool success = 3;
+}
+
+// Request to return all sessions present on the broker for a given data source
+message GetCurrentSessionsRequest {
+	// Data source name
+	string data_source = 1;
+}
+
+// Response to the listing of all available sessions on the broker request
+message GetCurrentSessionsResponse {
+	// List of unique session keys present on the broker for the specified data source
+	repeated string session_keys = 1;
+	// Whether the get current session request succeeded
+	bool success = 2;
+}
+
+// Request to return session info of a given session
+message GetSessionInfoRequest {
+	// Unique session key
+	string session_key = 1;
+}
+
+// Response to the session info request
+message GetSessionInfoResponse {
+	// Data Source name
+	string data_source = 1;
+	// Identifier
+	string identifier = 2; 
+	// Type
+	string type = 3;
+	 // Version
+	uint32 version = 4;
+	// Associate session keys
+	repeated string associate_session_keys = 5;	
+	// Shows whether the session is completed or not
+	bool is_complete = 6;
+	// Available streams
+	repeated string streams = 7;
+	// The offsets into each topic / partition (key is topic name, optionally appended with a ':' followed by the partition number)
+    map<string, int64> topic_partition_offsets = 8;
+	// Offset of the main data source topic
+	int64 main_offset = 9;
+	// Offset of the data source essentials topic
+	int64 essentials_offset = 10;
+	// Session details (detail name, detail value)
+	map<string, string> details = 11;
+	// Difference between UTC time and local standard time in the timezone in which the data is recorded (negative for negative longitudes, positive for positive longitudes)
+	google.protobuf.Duration utc_offset = 12;
+	// Whether the get session info request succeeded
+	bool success = 13;
+	// Session Creation Time
+	google.protobuf.Timestamp creation_time = 14;
+	// Session Termination Time (Not valid when session is not complete)
+	google.protobuf.Timestamp termination_time = 15;
+}
+
+// Request for obtaining a session start notification
+message GetSessionStartNotificationRequest {
+	// Data source name
+	string data_source = 1;
+}
+
+// Response to a session start notification request
+message GetSessionStartNotificationResponse {
+	// Unique session key of the started session
+	string session_key = 1;
+	// Data source name
+	string data_source = 2;
+}
+
+// Request for obtaining a session end notification
+message GetSessionStopNotificationRequest {
+	// Data source name
+	string data_source = 1;
+}
+
+// Response to a session end notification request
+message GetSessionStopNotificationResponse {
+	// Unique session key of the ended session
+	string session_key = 1;
+	// Data source name
+	string data_source = 2;
+}
+
+message UpdateSessionIdentifierRequest {
+	// Unique session key
+	string session_key = 1;
+	// Session identifier
+	string identifier = 2;
+}
+
+message UpdateSessionIdentifierResponse {
+	// Whether the update session identifier request succeeded
+	bool success = 1;
+}
+
+message AddAssociateSessionRequest {
+	// Unique session key of the parent session
+	string session_key = 1;
+	// Unique session key of the associate session
+	string associate_session_key = 2;
+}
+
+message AddAssociateSessionResponse {
+	// Whether the add associate session request succeeded
+	bool success = 1;
+}
+
+message UpdateSessionDetailsRequest {
+	// Unique session key
+	string session_key = 1;
+	// Session details to update (detail name, detail value)
+	map<string, string> details = 2;
+}
+
+message UpdateSessionDetailsResponse {
+	// Whether the update session details request succeeded
+	bool success = 1;
+}
