@@ -4,7 +4,7 @@
 // the consumer needs to know which packet types really arrive and how a
 // data-format id can be resolved back to a parameter.
 import kafkajs from 'kafkajs';
-import ZstdCodec from '@kafkajs/zstd';
+import zstdCodec from './zstd.js';
 
 const { Kafka, logLevel, CompressionTypes, CompressionCodecs } = kafkajs;
 import protobuf from 'protobufjs';
@@ -21,7 +21,7 @@ const Packet = root.lookupType('ma.streaming.open_data.v1.Packet');
 // gzip only, and without this it fails with "ZSTD compression not
 // implemented" - after successfully connecting and reporting topic offsets,
 // which makes it look like a subscription problem rather than a codec one.
-CompressionCodecs[CompressionTypes.ZSTD] = ZstdCodec();
+CompressionCodecs[CompressionTypes.ZSTD] = zstdCodec;
 
 const brokers = [process.env.KAFKA_BOOTSTRAP ?? 'localhost:9092'];
 const kafka = new Kafka({ clientId: 'lab-probe', brokers, logLevel: logLevel.WARN });

@@ -10,14 +10,14 @@
  * turned into a channel name, let alone a unit.
  */
 import kafkajs from 'kafkajs';
-import ZstdCodec from '@kafkajs/zstd';
+import zstdCodec from './zstd.js';
 import protobuf from 'protobufjs';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const { Kafka, logLevel, CompressionTypes, CompressionCodecs } = kafkajs;
-CompressionCodecs[CompressionTypes.ZSTD] = ZstdCodec();
+CompressionCodecs[CompressionTypes.ZSTD] = zstdCodec;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const proto = await protobuf.load(

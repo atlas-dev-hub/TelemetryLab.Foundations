@@ -16,7 +16,7 @@
  * idea what any of them are - which is what step 6 makes you experience.
  */
 import kafkajs from 'kafkajs';
-import ZstdCodec from '@kafkajs/zstd';
+import zstdCodec from './zstd.js';
 import protobuf from 'protobufjs';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +28,7 @@ const { Kafka, logLevel, CompressionTypes, CompressionCodecs } = kafkajs;
 // only. Without this line it connects happily, reports topic offsets happily,
 // and then delivers zero messages while throwing "ZSTD compression not
 // implemented" - which reads like a subscription bug and is not one.
-CompressionCodecs[CompressionTypes.ZSTD] = ZstdCodec();
+CompressionCodecs[CompressionTypes.ZSTD] = zstdCodec;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const proto = await protobuf.load(

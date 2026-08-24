@@ -10,8 +10,10 @@
     "latejoin": "node src/latejoin.js"
   },
   "dependencies": {
-    "@kafkajs/zstd": "^0.1.1",
     "kafkajs": "^2.2.4",
     "protobufjs": "^7.4.0"
+  },
+  "engines": {
+    "node": ">=22.15"
   }
 }
