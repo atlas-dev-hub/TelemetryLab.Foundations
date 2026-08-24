@@ -1,21 +1,22 @@
 ## Finished
 
-You have run a real-time telemetry pipeline end to end, and extended it.
+Three modules down. You have run a real-time telemetry pipeline end to end,
+extended it, and debugged it.
 
-Along the way: a **session** is a named thing with a lifecycle, not a window of
-time. A **channel** is an identity with units and a rate, not a field name. And
-the **configuration packet** is what carries the second one so that every
-consumer — including ones written years later by people you will never meet —
-can interpret the data without a wiki telling them how.
+Along the way:
 
-### What this MVP is not, yet
+- A **session** is a named thing with a lifecycle, not a window of time.
+- A **channel** is an identity with units and a rate, not a field name — and the
+  configuration packet carries that in-band, so consumers written years later by
+  people you will never meet can still interpret the data.
+- **Measurement time is not arrival time**, and a pipeline that confuses them
+  fails silently and convincingly.
 
-This is a two-module proof that the machinery works. The full course adds:
+### What comes next
 
 | | |
 |---|---|
-| 3 | Fix a broken producer — non-contiguous timestamps, diagnosed from the symptom |
-| 4 | Write your own consumer from scratch |
+| 4 | Write your own consumer from scratch, in any language |
 | 5 | Build a bridge from an arbitrary data source |
 | 6 | Survive a late joiner |
 | 7 | Detect a real event, graded against ground truth |

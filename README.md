@@ -2,7 +2,7 @@
 
 > Learn to build on an open, real-time telemetry platform — by building on it.
 
-**Progress:** [ ] 1 [ ] 2
+**Progress:** [ ] 1 [ ] 2 [ ] 3
 
 ---
 

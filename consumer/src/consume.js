@@ -57,6 +57,8 @@ let sessionCount = 0;
 let unresolved = 0;
 /** [timestampNs, value] for whichever channel is the speed one. */
 const speedSeries = [];
+/** identifier -> [{start, interval, count, session}] — for the contiguity check. */
+const packets = new Map();
 
 /** The speed channel's identifier, whatever application it came from. */
 function speedChannel() {
@@ -124,6 +126,28 @@ function handle(packet) {
           }
           i++;
         }
+      }
+      // Remember where this packet sits on the timeline, so we can check the
+      // batches actually join up. A periodic packet declares a start time and
+      // an interval, which means the next packet for the same channel must
+      // start exactly one interval after this packet's last sample. Anything
+      // else is a gap or an overlap, and it shows up as a jumpy trace.
+      if (interval > 0 && i > 0) {
+        if (!packets.has(identifier)) packets.set(identifier, []);
+        packets.get(identifier).push({
+          // BigInt, deliberately.
+          //
+          // These are nanoseconds since the epoch, around 1.79e18, and
+          // Number.MAX_SAFE_INTEGER is 9.0e15. Converting to a double quantises
+          // them to 256 ns steps, which shows up as every batch overlapping the
+          // previous one by exactly 256 ns — a phantom bug in the producer that
+          // is really a precision bug in the consumer. Nanosecond timestamps in
+          // JavaScript are a BigInt problem.
+          start: BigInt(p.startTime?.toString() ?? '0'),
+          interval: BigInt(interval),
+          count: BigInt(i),
+          session: packet.sessionKey,
+        });
       }
       break;
     }
@@ -280,6 +304,43 @@ if (unresolved > 0) {
   );
 }
 
+// --- timestamp contiguity ---------------------------------------------------
+//
+// Batches for one channel must join up exactly: each packet starts one interval
+// after the previous packet's last sample. A producer that re-reads the clock
+// per batch instead of accumulating leaves gaps of whatever the send took,
+// which is the classic cause of a trace that looks jumpy for no obvious reason.
+const gaps = [];
+for (const [identifier, list] of packets) {
+  const mine = list
+    .filter((x) => !latestSession || x.session === latestSession)
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  for (let i = 1; i < mine.length; i++) {
+    const prev = mine[i - 1];
+    const expected = prev.start + prev.interval * prev.count;
+    const drift = mine[i].start - expected;
+    if (drift !== 0n) gaps.push({ identifier, drift, at: mine[i].start });
+  }
+}
+
+if (gaps.length === 0) {
+  console.log('\n  Timestamps: contiguous. Every batch starts exactly where the last one ended.');
+} else {
+  const abs = (v) => (v < 0n ? -v : v);
+  const worst = gaps.reduce((a, b) => (abs(b.drift) > abs(a.drift) ? b : a));
+  const total = gaps.reduce((a, g) => a + abs(g.drift), 0n);
+  console.log(`\n  Timestamps: ${gaps.length} DISCONTINUITIES across ${packets.size} channels.`);
+  console.log(`  Worst single gap: ${(Number(worst.drift) / 1e6).toFixed(3)} ms on ${worst.identifier}`);
+  console.log(`  Total drift:      ${(Number(total) / 1e6).toFixed(1)} ms`);
+  console.log('\n  First few, so you can see where they land:');
+  for (const g of gaps.slice(0, 4)) {
+    const sign = g.drift > 0n ? 'gap ' : 'overlap ';
+    console.log(`    ${g.identifier.padEnd(28)} ${sign}${abs(g.drift)} ns`);
+  }
+  console.log('\n  Each gap is a hole in the recorded timeline. The samples are all');
+  console.log('  present, but they claim to have happened at the wrong moments.');
+}
+
 // The units, ranges and channel names above did not come from this file. They
 // arrived with the data, in the configuration packet. That is the difference
 // between a telemetry platform and a topic full of numbers.
@@ -295,6 +356,10 @@ writeFileSync(
     samples: totalSamples,
     lapMarkers: laps.length,
     unresolved,
+    timestampGaps: gaps.length,
+    worstGapNs: gaps.length
+      ? Number(gaps.reduce((a, g) => ((g.drift < 0n ? -g.drift : g.drift) > a ? (g.drift < 0n ? -g.drift : g.drift) : a), 0n))
+      : 0,
   }),
   'utf-8',
 );

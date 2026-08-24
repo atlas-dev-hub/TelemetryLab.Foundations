@@ -82,9 +82,9 @@ def wait_for_stream_api(timeout_s: float = 90) -> None:
     )
 
 
-def produce(extra: list[str] | None = None) -> str:
-    """Run the producer. Returns its stdout."""
-    cmd = [sys.executable, "produce.py", "--laps", "1", "--fast"] + (extra or [])
+def produce(extra: list[str] | None = None, script: str = "produce.py") -> str:
+    """Run a producer. Returns its stdout."""
+    cmd = [sys.executable, script, "--laps", "1", "--fast"] + (extra or [])
     r = run(cmd, cwd=os.path.join(ROOT, "producer"))
     if r.returncode != 0:
         tail = (r.stderr or r.stdout).strip().splitlines()[-12:]
@@ -241,9 +241,54 @@ def module_2(handle: str) -> str:
     )
 
 
+def module_3(handle: str) -> str:
+    """Find and fix the timestamp bug in the variant producer."""
+    wait_for_stream_api()
+    produce(script="produce_v2.py")
+    recovered = consume()
+
+    gaps = recovered.get("timestampGaps")
+    if gaps is None:
+        raise Failed(
+            "The consumer did not report on timestamp continuity.",
+            "This one is ours - the consumer should always report it. Please "
+            "raise an issue.",
+        )
+
+    if gaps > 0:
+        worst_ms = recovered.get("worstGapNs", 0) / 1e6
+        raise Failed(
+            f"`produce_v2.py` still leaves **{gaps} discontinuities** in the "
+            f"timeline (worst: {worst_ms:.1f} ms).",
+            "Every sample is present and every value is correct — what is "
+            "wrong is *when they claim to have happened*.\n\n"
+            "A `PeriodicDataPacket` declares a start time and an interval. That "
+            "means the next packet for a channel has to start exactly one "
+            "interval after the previous packet's last sample. Look at what "
+            "happens to `timestamp_ns` after each batch is written, and ask "
+            "where the value for the *next* batch comes from.\n\n"
+            "Compare it against `produce.py`, which is correct."
+        )
+
+    return (
+        "`produce_v2.py` now produces a contiguous timeline — every batch "
+        "starts exactly where the previous one ended.\n\n"
+        "- Discontinuities: **0**\n"
+        f"- Samples: {recovered.get('samples', 0):,}\n\n"
+        "The bug was that the producer asked the clock what time it was for each "
+        "batch, instead of advancing its own count of how much data it had sent. "
+        "Reading the clock measures *when the send happened*, which includes "
+        "however long serialising and transmitting took. Measurement time and "
+        "arrival time are different facts, and a recording that confuses them "
+        "cannot be trusted later — the values are right, the moments are "
+        "wrong, and nothing errors."
+    )
+
+
 MODULES = {
     1: ("Make it yours", module_1),
     2: ("Add a channel", module_2),
+    3: ("Fix the broken producer", module_3),
 }
 
 
