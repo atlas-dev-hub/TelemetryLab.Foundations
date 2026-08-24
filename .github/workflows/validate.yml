@@ -53,10 +53,12 @@ jobs:
         with:
           node-version: "22"
 
+      # Never silence an install. A swallowed npm error looks identical to a
+      # broken validator, and costs an hour to tell apart.
       - name: Install dependencies
         run: |
-          pip install --quiet -r producer/requirements.txt
-          (cd consumer && npm install --silent --no-audit --no-fund)
+          pip install -r producer/requirements.txt
+          cd consumer && npm install --no-audit --no-fund
 
       - name: Start the telemetry stack
         run: docker compose up -d --wait kafka stream-api key-generator
