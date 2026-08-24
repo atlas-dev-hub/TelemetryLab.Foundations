@@ -108,18 +108,43 @@ jobs:
           python .lab/advance.py "$RUN_URL"
 
       - name: Commit the advance
+        id: advance_commit
         run: |
           git config user.name  "atlas-telemetry-lab[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md .lab/progress.json
           git commit -m "Module ${{ steps.module.outputs.number }} complete" || echo "nothing to commit"
           git push origin HEAD:${{ github.head_ref }}
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Merge by explicit SHA, with a short retry.
+      #
+      # The step above just pushed a commit to this very branch, so the head SHA
+      # GitHub has on the pull request is momentarily stale and a plain
+      # `gh pr merge` fails with "Head branch is out of date". Naming the SHA we
+      # just pushed removes the ambiguity; the retry covers the second or two
+      # GitHub takes to catch up.
       - name: Merge it
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ steps.advance_commit.outputs.sha }}
         run: |
-          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch --admin
+          for attempt in 1 2 3 4 5; do
+            if gh api -X PUT \
+                 "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/merge" \
+                 -f merge_method=squash \
+                 -f sha="$SHA" \
+                 -f commit_title="Module ${{ steps.module.outputs.number }} complete"; then
+              echo "merged on attempt $attempt"
+              gh api -X DELETE \
+                "repos/${{ github.repository }}/git/refs/heads/${{ github.head_ref }}" || true
+              exit 0
+            fi
+            echo "merge attempt $attempt did not take; waiting"
+            sleep 5
+          done
+          echo "::error::Could not merge after 5 attempts."
+          exit 1
 
       - name: Tear down
         if: always()
