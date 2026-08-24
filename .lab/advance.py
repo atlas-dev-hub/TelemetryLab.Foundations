@@ -19,7 +19,7 @@ MODULES = os.path.join(LAB, "modules")
 PROGRESS = os.path.join(LAB, "progress.json")
 README = os.path.join(ROOT, "README.md")
 
-TOTAL = 3
+TOTAL = 4
 
 
 def load() -> dict:

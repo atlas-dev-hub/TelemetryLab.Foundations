@@ -21,6 +21,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
+import string
 import subprocess
 import sys
 import time
@@ -28,6 +30,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAB = os.path.join(ROOT, ".lab")
 CONSUMED = os.path.join(LAB, ".consumed")
+MY_CONSUMER = os.path.join(LAB, "my-consumer.json")
 
 STREAM_API = os.environ.get("STREAM_API_ADDRESS", "localhost:13579")
 KAFKA = os.environ.get("KAFKA_BOOTSTRAP", "localhost:9092")
@@ -118,6 +121,34 @@ def npm() -> str:
     )
 
 
+def bash() -> str:
+    """
+    Resolve a usable bash.
+
+    On Windows `which("bash")` typically finds the WSL shim, which cannot see
+    the Windows filesystem the way the rest of the lab expects and fails with a
+    baffling `execvpe(/bin/bash)` error. Git for Windows ships a real bash, so
+    prefer that. CI is Linux and takes the first branch.
+    """
+    from shutil import which
+
+    if os.name == "nt":
+        for candidate in (
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\bin\bash.exe",
+        ):
+            if os.path.exists(candidate):
+                return candidate
+    found = which("bash")
+    if found:
+        return found
+    raise Failed(
+        "bash is not available.",
+        "The lab runs `my-consumer/run.sh` with bash. On Windows, install Git "
+        "for Windows (which includes it) or run the lab in the Codespace.",
+    )
+
+
 def consume() -> dict:
     """Run the consumer and return what it recovered."""
     if os.path.exists(CONSUMED):
@@ -148,6 +179,31 @@ def session_identifier(producer_output: str) -> str | None:
         if line.startswith("LAB_SESSION="):
             return line.split("=", 1)[1].strip()
     return None
+
+
+def ground_truth(producer_output: str) -> dict:
+    """
+    What the producer says it sent.
+
+    Grading a consumer against the producer's own record, rather than against
+    the reference consumer, matters: two implementations can share the same
+    misunderstanding and agree with each other while both being wrong. The
+    producer is the only thing that knows for certain.
+    """
+    out: dict = {"channels": {}, "samples_per_channel": 0, "lap_markers": 0, "session": ""}
+    for line in producer_output.splitlines():
+        if line.startswith("LAB_SESSION="):
+            out["session"] = line.split("=", 1)[1].strip()
+        elif line.startswith("LAB_SAMPLES_PER_CHANNEL="):
+            out["samples_per_channel"] = int(line.split("=", 1)[1])
+        elif line.startswith("LAB_LAP_MARKERS="):
+            out["lap_markers"] = int(line.split("=", 1)[1])
+        elif line.startswith("LAB_CHANNELS="):
+            for pair in line.split("=", 1)[1].split(","):
+                name, _, units = pair.partition(":")
+                if name:
+                    out["channels"][name] = units
+    return out
 
 
 def topic_counts() -> dict[str, int]:
@@ -290,6 +346,135 @@ MODULES = {
     2: ("Add a channel", module_2),
     3: ("Fix the broken producer", module_3),
 }
+
+
+def module_4(handle: str) -> str:
+    """Their own consumer, graded against what the producer actually sent."""
+    wait_for_stream_api()
+
+    # Vary the stream so a hardcoded answer cannot pass.
+    #
+    # A different number of laps, and one extra channel whose name and units are
+    # invented here. A consumer that assumes eleven channels, or that has the
+    # unit strings baked in, fails — which is the point: the whole argument for
+    # a telemetry data model is that a consumer should not need to know these in
+    # advance.
+    rand = random.Random()
+    laps = rand.randint(2, 4)
+    extra_name = "Aux" + "".join(rand.choice(string.ascii_uppercase) for _ in range(4))
+    extra_units = rand.choice(["bar", "degC", "kPa", "V", "rpm", "mm"])
+
+    output = produce(["--laps", str(laps), "--extra-channel", f"{extra_name}:{extra_units}"])
+    truth = ground_truth(output)
+
+    if not truth.get("channels"):
+        raise Failed(
+            "The producer did not report what it sent.",
+            "That is ours, not yours. Please raise an issue.",
+        )
+
+    if os.path.exists(MY_CONSUMER):
+        os.remove(MY_CONSUMER)
+
+    r = run([bash(), "my-consumer/run.sh"], timeout=600)
+    if not os.path.exists(MY_CONSUMER):
+        tail = (r.stdout or "") + (r.stderr or "")
+        raise Failed(
+            "`my-consumer/run.sh` did not produce `.lab/my-consumer.json`.",
+            "It must read the stream and write that file. See "
+            "`my-consumer/README.md` for the shape.\n\n"
+            "What it printed:\n\n```\n" + tail.strip()[-1200:] + "\n```",
+        )
+
+    try:
+        with open(MY_CONSUMER, encoding="utf-8") as f:
+            got = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        raise Failed(
+            f"`.lab/my-consumer.json` is not valid JSON ({e}).",
+            "See `my-consumer/README.md` for the expected shape.",
+        )
+
+    # --- compare against the producer's own record --------------------------
+    expected_units = truth["channels"]
+    got_channels = {
+        str(c.get("identifier", "")).split(":", 1)[0]: c
+        for c in got.get("channels", [])
+        if isinstance(c, dict)
+    }
+
+    missing = sorted(set(expected_units) - set(got_channels))
+    if missing:
+        raise Failed(
+            f"Your consumer reported {len(got_channels)} channels; the producer "
+            f"sent {len(expected_units)}.",
+            "Missing: " + ", ".join(f"`{m}`" for m in missing[:8]) + "\n\n"
+            f"Note that this run included an extra channel, `{extra_name}`, that "
+            "is not in the lab's default set. The validator invents one on every "
+            "run — a consumer that assumes a fixed channel list will not pass.",
+        )
+
+    wrong_units = [
+        (name, got_channels[name].get("units"), expected_units[name])
+        for name in expected_units
+        if str(got_channels[name].get("units", "")) != expected_units[name]
+    ]
+    if wrong_units:
+        rows = "\n".join(
+            f"- `{n}`: you reported `{g}`, the configuration said `{e}`"
+            for n, g, e in wrong_units[:6]
+        )
+        raise Failed(
+            f"{len(wrong_units)} channel(s) came back with the wrong units.",
+            "Units are not something to infer or hardcode — they arrive in the "
+            "`ConfigurationPacket`, per parameter.\n\n" + rows,
+        )
+
+    expected_samples = truth["samples_per_channel"]
+    bad_counts = [
+        (name, got_channels[name].get("samples"))
+        for name in expected_units
+        if int(got_channels[name].get("samples", -1) or 0) != expected_samples
+    ]
+    if bad_counts:
+        rows = "\n".join(f"- `{n}`: you counted {c}" for n, c in bad_counts[:6])
+        raise Failed(
+            f"Sample counts do not match. The producer sent **{expected_samples}** "
+            f"per channel; {len(bad_counts)} channel(s) disagree.",
+            "Each `PeriodicDataPacket` carries one column of samples for one "
+            "parameter. Count what you decode, not what you expect.\n\n" + rows,
+        )
+
+    if str(got.get("sessionIdentifier", "")) != truth["session"]:
+        raise Failed(
+            "The session identifier does not match.",
+            f"You reported `{got.get('sessionIdentifier')}`.\n"
+            f"The producer created `{truth['session']}`.",
+        )
+
+    if int(got.get("lapMarkers", -1) or 0) != truth["lap_markers"]:
+        raise Failed(
+            f"Lap markers: you reported {got.get('lapMarkers')}, "
+            f"there were {truth['lap_markers']}.",
+            "Count `MarkerPacket`s whose `type` is `Lap Trigger`. This run had "
+            f"{laps} laps plus the out lap.",
+        )
+
+    return (
+        "Your consumer decoded the stream correctly, on a session it had never "
+        "seen before.\n\n"
+        f"- Channels: **{len(expected_units)}** — including `{extra_name}` "
+        f"(`{extra_units}`), invented for this run\n"
+        f"- Samples per channel: **{expected_samples:,}**\n"
+        f"- Laps: {laps} plus the out lap\n\n"
+        "Nothing about this run was knowable in advance. The channel list, its "
+        "units and the lap count all came out of the stream itself — which is "
+        "exactly what a telemetry data model is for, and what you would have had "
+        "to maintain by hand on a bare topic."
+    )
+
+
+MODULES[4] = ("Write your first consumer", module_4)
 
 
 # --- entry point ------------------------------------------------------------

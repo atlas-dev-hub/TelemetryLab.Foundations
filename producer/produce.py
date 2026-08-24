@@ -20,7 +20,7 @@ import signal
 import sys
 import time
 
-from atlas_lab.channels import CHANNELS
+from atlas_lab.channels import CHANNELS, ChannelDef
 from atlas_lab.lapsim import GT3, REFERENCE_DRIVER, DriverModel, LapSimulator
 from atlas_lab.writer import AtlasWriter
 
@@ -61,9 +61,22 @@ def main() -> int:
                    help="stream at wall-clock speed (default)")
     p.add_argument("--fast", dest="realtime", action="store_false",
                    help="stream as fast as possible - useful in CI")
+    # Used by the Module 4 validator to vary the stream between runs, so a
+    # consumer cannot pass by hardcoding what it expects to find.
+    p.add_argument("--extra-channel", default=None, metavar="NAME:UNITS",
+                   help="append one more channel, e.g. AuxPressure:bar")
     args = p.parse_args()
 
     signal.signal(signal.SIGINT, _handle_sigint)
+
+    channels = list(CHANNELS)
+    extra_key = None
+    if args.extra_channel:
+        extra_key, _, extra_units = args.extra_channel.partition(":")
+        channels.append(
+            ChannelDef(extra_key, extra_units or "", f"{extra_key} (lab)", "%8.3f", -1000, 1000)
+        )
+    channels = tuple(channels)
 
     driver = DRIVERS[args.driver]
     sim = LapSimulator(car=GT3, driver=driver, rate_hz=args.rate)
@@ -81,14 +94,14 @@ def main() -> int:
     writer.connect()
     print("Connected.")
 
-    session_key = writer.start_session(name, CHANNELS)
+    session_key = writer.start_session(name, channels)
     print(f"[1/3] Session   : {name}")
     # Machine-readable, for the lab validator. The session only gets this far
     # after a successful CreateSession round-trip to the Stream API, so
     # printing it is evidence the pipeline worked, not just a claim.
     print(f"LAB_SESSION={name}")
     print(f"[1/3] Key       : {session_key}")
-    print(f"[2/3] Config    : {len(CHANNELS)} parameters, 1 group, both streams, essential")
+    print(f"[2/3] Config    : {len(channels)} parameters, 1 group, both streams, essential")
     print(f"[3/3] Streaming : {'%d laps' % args.laps if args.seconds is None else '%.0f s' % args.seconds}")
     print()
 
@@ -101,7 +114,7 @@ def main() -> int:
     timestamp_ns = time.time_ns()
     writer.write_marker(timestamp_ns, "Out Lap", "Lap Trigger", "Session start", 1)
 
-    batch: dict[str, list[float]] = {c.key: [] for c in CHANNELS}
+    batch: dict[str, list[float]] = {c.key: [] for c in channels}
     samples_sent = 0
     laps_done = 0
     started = time.time()
@@ -110,25 +123,27 @@ def main() -> int:
     try:
         while not _stop:
             values, crossed_line = sim.step()
+            if extra_key is not None:
+                values[extra_key] = 20.0 + 5.0 * (samples_sent % 97) / 97.0
             for k, v in values.items():
                 if k in batch:
                     batch[k].append(v)
 
             if crossed_line:
                 laps_done += 1
-                lap_end_ns = timestamp_ns + len(batch[CHANNELS[0].key]) * interval_ns
+                lap_end_ns = timestamp_ns + len(batch[channels[0].key]) * interval_ns
                 writer.write_marker(
                     lap_end_ns, f"Lap {laps_done}", "Lap Trigger", "Start/finish crossing", laps_done + 1
                 )
                 print(f"  lap {laps_done} complete  ({(lap_end_ns - lap_started) / 1e9:.3f}s)")
                 lap_started = lap_end_ns
 
-            if len(batch[CHANNELS[0].key]) >= batch_size:
-                n = len(batch[CHANNELS[0].key])
+            if len(batch[channels[0].key]) >= batch_size:
+                n = len(batch[channels[0].key])
                 writer.write_batch(batch, timestamp_ns, interval_ns)
                 timestamp_ns += n * interval_ns
                 samples_sent += n
-                batch = {c.key: [] for c in CHANNELS}
+                batch = {c.key: [] for c in channels}
                 if args.realtime:
                     target = started + samples_sent / args.rate
                     delay = target - time.time()
@@ -142,7 +157,7 @@ def main() -> int:
                 break
 
         # Flush whatever is left so the last fraction of a lap is not lost.
-        remaining = len(batch[CHANNELS[0].key])
+        remaining = len(batch[channels[0].key])
         if remaining:
             writer.write_batch(batch, timestamp_ns, interval_ns)
             timestamp_ns += remaining * interval_ns
@@ -154,11 +169,19 @@ def main() -> int:
 
     elapsed = time.time() - started
     print()
-    print(f"Sent {samples_sent} samples x {len(CHANNELS)} channels "
-          f"({samples_sent * len(CHANNELS)} values) in {elapsed:.1f}s.")
+    print(f"Sent {samples_sent} samples x {len(channels)} channels "
+          f"({samples_sent * len(channels)} values) in {elapsed:.1f}s.")
     print("Session ended cleanly.")
+
+    # Machine-readable ground truth for the lab validators. The producer is the
+    # only thing that knows for certain what it sent, so grading a consumer
+    # against these is grading it against the truth rather than against a
+    # second implementation that might share the same misunderstanding.
+    print(f"LAB_SAMPLES_PER_CHANNEL={samples_sent}")
+    print(f"LAB_CHANNEL_COUNT={len(channels)}")
+    print("LAB_CHANNELS=" + ",".join(f"{c.key}:{c.units}" for c in channels))
+    print(f"LAB_LAP_MARKERS={laps_done + 1}")
     print()
-    print("Next: lab/03-consume-it.md")
     return 0
 
 
