@@ -54,6 +54,16 @@ def render(state: dict) -> str:
 
 def main() -> int:
     state = load()
+
+    # `--render` rewrites README.md for whatever module the learner is on
+    # without advancing them. The welcome workflow uses it to swap the
+    # template's landing page for the guided one the moment a copy is made.
+    if "--render" in sys.argv[1:]:
+        with open(README, "w", encoding="utf-8") as f:
+            f.write(render(state))
+        print(f"rendered: module {state['module']}")
+        return 0
+
     completed = state["module"]
 
     if completed not in state["completed"]:

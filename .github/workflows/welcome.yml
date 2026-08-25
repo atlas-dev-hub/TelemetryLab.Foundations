@@ -1,0 +1,98 @@
+# The starting gun.
+#
+# Runs once, in the learner's brand-new copy, on the push GitHub makes when
+# somebody generates a repository from this template. It does two things:
+#
+#   1. Swaps the template's landing page ("use this template") for the guided
+#      README ("you are in your own copy, here is module 1"). Without this the
+#      same page has to serve two audiences at once and ends up confusing both.
+#   2. Opens a "Start here" issue, which is the only thing in this whole flow
+#      that sends the learner a notification.
+#
+# The push-on-template-creation trigger is known to be occasionally unreliable,
+# so nothing depends on it: the Codespace prints `lab status` in the terminal
+# regardless, and this workflow can be re-run by hand from the Actions tab.
+
+name: welcome
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  welcome:
+    # Never in the template itself — only in a copy of it. And only on the
+    # first run, which is the repository-creation push.
+    if: >-
+      github.event.repository.is_template == false &&
+      (github.event_name == 'workflow_dispatch' || github.run_number == 1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Swap in the guided README
+        run: python .lab/advance.py --render
+
+      - name: Commit it
+        run: |
+          git config user.name  "atlas-telemetry-lab[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Welcome — start at module 1" || echo "nothing to commit"
+          git push origin HEAD:main
+
+      - name: Open the start-here issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const body = [
+              `Welcome to the ATLAS Telemetry Lab, @${context.repo.owner}.`,
+              ``,
+              `You are going to run a real telemetry pipeline — a broker, a streaming`,
+              `API and a synthetic race car — and change it four times. Nothing here`,
+              `needs a licence, hardware, a simulator, or anything installed.`,
+              ``,
+              `### Do this now`,
+              ``,
+              `**1.** [Open a Codespace on this repository](https://codespaces.new/${repo}?quickstart=1).`,
+              `The first build takes a few minutes; later opens are quick.`,
+              ``,
+              `**2.** When the terminal appears, it will tell you where you are. Ask it`,
+              `again at any point:`,
+              ``,
+              '```bash',
+              `lab`,
+              '```',
+              ``,
+              `**3.** Follow the module in the README, then:`,
+              ``,
+              '| Command | What it does |',
+              '|---|---|',
+              '| `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |',
+              '| `lab submit` | Branches, commits, pushes and opens the pull request. |',
+              ``,
+              `\`lab check\` runs the identical code the bot runs, so a pass here is a`,
+              `pass there. There is no reason to ever push a guess.`,
+              ``,
+              `---`,
+              ``,
+              `<sub>Progress is tracked in the README and in \`.lab/progress.json\`. This`,
+              `issue is just the starting gun — close it whenever you like.</sub>`,
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Start here",
+              body,
+            });

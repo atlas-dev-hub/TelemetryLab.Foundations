@@ -2,99 +2,76 @@
 
 > Learn to build on an open, real-time telemetry platform — by building on it.
 
-## Start here
+Four modules. A real broker, a real streaming API, a synthetic race car, and a
+bot that checks your work and advances you when it passes. No licence, no
+hardware, no simulator, and nothing to install.
+
+## Start
 
 **Do not clone this repository, and do not fork it.**
 
-1. Click **`Use this template` → `Create a new repository`** at the top of this page.
-   Name it whatever you like — `telemetry-lab` is fine.
-2. In *your* new repository: **`Code` → `Codespaces` → `Create codespace on main`**.
-3. Wait for it to build, then follow the module below.
+### 1. Make your own copy
 
-You need your own copy because you will be opening pull requests against it, and
-a bot will be committing your progress back to it. A fork would not work: GitHub
-disables Actions in forks by default, and a fork's pull requests default to
-targeting *this* repository rather than yours.
+Click **`Use this template` → `Create a new repository`** at the top of this
+page. Name it whatever you like.
 
-<details>
-<summary>Prefer your own machine?</summary>
+You need your own copy because you will be opening pull requests against it and
+a bot will be committing your progress back to it. A fork would not work:
+GitHub disables Actions in forks by default, and a fork's pull requests default
+to targeting *this* repository rather than yours.
 
-Everything runs locally with Docker and no Codespace. You still want your own
-repository from the template, so the validator can run and record your progress.
+### 2. Open a Codespace on **your** repository
 
-```bash
-gh repo create my-telemetry-lab --private --template <this-repo>
-cd my-telemetry-lab
-pip install -r producer/requirements.txt
-(cd consumer && npm install)
-docker compose up -d --wait kafka stream-api key-generator
-```
+`Code` → `Codespaces` → `Create codespace on main`.
 
-You will need Docker, Python 3.12+, and Node 22.15+.
+The first build takes a few minutes while it installs Docker, Python and Node.
+When the terminal appears it tells you exactly where you are and what to do.
 
-</details>
+### 3. Run `lab`
 
----
+Everything after that is driven from three commands, and the terminal reminds
+you of them:
 
-**Progress:** [ ] 1 [ ] 2 [ ] 3 [ ] 4
+| Command | What it does |
+|---|---|
+| `lab` | Where you are and what to do next |
+| `lab check` | Runs the real validator locally, in seconds |
+| `lab submit` | Branches, commits, pushes, opens the pull request |
 
 ---
 
-## Module 1 — Make it yours
+> **Already in your own copy and still seeing this page?** The welcome step did
+> not run. Nothing is broken — open the Codespace and run `lab`, which will tell
+> you where you are. To restore the guided README, run the **welcome** workflow
+> from the `Actions` tab.
 
-**Goal:** get a real telemetry pipeline running, and understand what a *session* is.
+## What the modules teach
 
-### Run it
+The point is not "how to run Kafka". It is the things a bare topic and a
+time-series database have no concept of, and which you would otherwise rebuild
+by hand on every project.
 
-```bash
-docker compose up -d --wait kafka stream-api key-generator
-cd producer && pip install -r requirements.txt
-python produce.py --laps 1
-```
+| Module | What you do | What it is really about |
+|---|---|---|
+| 1 | Make it yours | **Sessions** — telemetry is not an anonymous window of time |
+| 2 | Add a channel | **Parameter definitions** — identity, units, range, rate, in-band |
+| 3 | Fix the broken producer | **Contiguous time** — a failure that reports success |
+| 4 | Write your first consumer | Reading a stream you were never told the shape of |
 
-A synthetic GT3 drives a lap of a fictional circuit at 60 Hz. Eleven channels
-stream through the ATLAS Stream API into Kafka.
-
-Nothing here needs a licence, a simulator, or any hardware.
-
-### Your task
-
-Open [`producer/produce.py`](producer/produce.py) and find `LAB_HANDLE` near the
-top. Set it to your GitHub handle.
-
-That is all — but notice *where* it ends up. `LAB_HANDLE` becomes part of the
-**session identifier**, which is created before a single sample is sent and
-travels with every packet after it.
-
-That is what a session is: not an anonymous window of time, but a named thing
-with a start, an end, and a configuration that belongs to it. It is the first of
-the ideas a bare Kafka topic has no concept of.
-
-### Submit it
-
-```bash
-git checkout -b module-1
-git commit -am "Module 1: set my handle"
-git push -u origin module-1
-```
-
-Then open a pull request against `main` **in your own repository**. A bot will
-run the whole pipeline, check the session carries your handle, and tell you what
-happened.
-
-<details>
-<summary>What is actually running?</summary>
+## What is running
 
 | Service | Port | Role |
 |---|---|---|
 | `kafka` | 9092 | The broker. Holds the telemetry. |
-| `stream-api` | 13579 | Producers talk gRPC to this. It never talks to ATLAS. |
+| `stream-api` | 13579 | Producers talk gRPC to this. |
 | `key-generator` | 15379 | Unique ids for sessions and configuration. |
 
-Producers do **not** write to Kafka directly. The Stream API is where a stream
-of numbers becomes telemetry — it registers the session, holds the configuration
-describing each channel, and allocates the data-format ids a consumer needs to
-decode a packet. Write straight to a topic and the bytes land, but nothing can
-read them.
+Roughly 440 MiB at idle — comfortably inside the smallest Codespace, and well
+inside the free tier for the length of the course.
 
-</details>
+## Cost
+
+Nothing, to you or to us. Actions runs in your repository; on a public
+repository that is free. Codespaces draws on your own free allowance (120
+core-hours a month on a Free account, 180 on Pro, and students get Pro through
+the GitHub Education pack). The whole course is well under one hour of compute.

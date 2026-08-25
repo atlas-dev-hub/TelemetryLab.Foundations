@@ -499,7 +499,13 @@ def main() -> int:
         print(f"### Not yet\n\n{e.problem}\n")
         if e.fix:
             print(f"{e.fix}\n")
-        print("---\n\nPush another commit to this branch and it will re-run.")
+        # This report is read in two places, and they need different advice.
+        # In CI it is a pull request comment; locally it is `lab check`, where
+        # telling someone to push a commit is exactly the wrong instruction.
+        if os.environ.get("GITHUB_ACTIONS"):
+            print("---\n\nPush another commit to this branch and it will re-run.")
+        else:
+            print("---\n\nFix it and run `lab check` again. Nothing has been pushed.")
         return 1
     except Exception as e:  # noqa: BLE001
         print(f"### Something went wrong\n\n`{type(e).__name__}: {e}`\n")

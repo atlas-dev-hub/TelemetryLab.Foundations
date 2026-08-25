@@ -33,11 +33,23 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "customizations": {
+    // Open the instructions, rendered, the moment the Codespace appears.
+    //
+    // Without this a learner lands in an empty editor looking at a file tree.
+    // `openFiles` only works in the VS Code *web* client and only on the first
+    // open — which is precisely the moment that matters — and the editor
+    // association is what makes README.md arrive as a rendered page rather than
+    // as raw Markdown source. Reopen as text with "View: Reopen Editor With".
+    "codespaces": {
+      "openFiles": ["README.md"]
+    },
     "vscode": {
       "extensions": ["ms-python.python", "ms-azuretools.vscode-containers"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "files.exclude": { "**/__pycache__": true }
+        "workbench.editorAssociations": { "*.md": "vscode.markdown.preview.editor" },
+        "workbench.startupEditor": "readme",
+        "files.exclude": { "**/__pycache__": true, "**/.lab/.consumed": true }
       }
     }
   },

@@ -132,8 +132,21 @@ see the work rather than a badge.
 
 ## Still to prove
 
-- **Codespaces.** The MVP was validated through Actions. The one-click browser
-  path is configured but untested.
+- **Codespaces.** The MVP was validated through Actions, and the devcontainer,
+  the `lab` command and the local validator were all exercised on a real machine.
+  But **no Codespace has ever been launched from this repository.** The first
+  launch is unproven, and it is the first thing a tester should do. What is most
+  likely to be wrong: image pull time on first create, and whether
+  `customizations.codespaces.openFiles` fires before `postCreateCommand`
+  finishes.
+- **The welcome workflow.** Its `push`-on-template-creation trigger is
+  [documented as occasionally unreliable](https://github.com/orgs/community/discussions/25748).
+  Nothing depends on it — the Codespace terminal greets the learner regardless —
+  but whether it fires is unmeasured until someone generates a copy.
+- **Prebuilds are not available to us.** They would remove most of the first-open
+  wait, but a prebuild configuration is per-repository, is not copied by "Use
+  this template", and bills the repository owner. A learner would have to set one
+  up themselves, which is worse than waiting.
 - **The registry.** No central completion record yet — that is design §3.
 - **Someone who is not us.** Everything here was driven by the person who wrote
   it. The gate that matters is five external people finishing Foundation.
