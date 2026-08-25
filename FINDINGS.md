@@ -139,10 +139,14 @@ see the work rather than a badge.
   likely to be wrong: image pull time on first create, and whether
   `customizations.codespaces.openFiles` fires before `postCreateCommand`
   finishes.
-- **The welcome workflow.** Its `push`-on-template-creation trigger is
-  [documented as occasionally unreliable](https://github.com/orgs/community/discussions/25748).
-  Nothing depends on it — the Codespace terminal greets the learner regardless —
-  but whether it fires is unmeasured until someone generates a copy.
+- **The welcome workflow — fired, once.** Generating `lab-welcome-test` from the
+  template ran it on the creation push: README swapped to the guided version,
+  "Start here" issue opened, 15s end to end. The `is_template` guard also
+  correctly skipped it in the template itself. But the trigger is
+  [documented as occasionally unreliable](https://github.com/orgs/community/discussions/25748),
+  and one success is not a measurement of reliability. Nothing depends on it —
+  the Codespace terminal greets the learner regardless, and the workflow can be
+  re-run by hand.
 - **Prebuilds are not available to us.** They would remove most of the first-open
   wait, but a prebuild configuration is per-repository, is not copied by "Use
   this template", and bills the repository owner. A learner would have to set one
