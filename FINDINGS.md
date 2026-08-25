@@ -130,15 +130,75 @@ Those URLs are public, permanent, and checkable by anyone — including by a
 registry bot verifying a completion claim, and by a hiring manager who wants to
 see the work rather than a badge.
 
+## Launching a real Codespace, and the eight things it found
+
+The whole loop now runs end to end in a Codespace on a repository generated from
+the template: stack up, `lab check` fail, fix, `lab check` pass, `lab submit`,
+bot validates, merges, advances to Module 2. Getting there took six attempts,
+and every one of the following was invisible until a real Codespace was launched.
+
+| Measured, on the 2-core machine | |
+|---|---|
+| Create → `Available` | 143–164 s |
+| `postCreateCommand` | 44–50 s |
+| Click → fully ready | **~3.5 min** |
+| `docker compose up` after the pre-pull | **10.6 s** |
+| Bot validation run | ~2 min |
+
+**1. The container was not being built at all.** The `docker-in-docker` Feature
+failed to install, so the build failed, so Codespaces silently substituted a
+*recovery container*: Alpine, repository mounted, no Docker, no Node. It reports
+as `Available` and looks fine. A learner would have hit
+`docker: command not found` on the first instruction in Module 1.
+
+The cause is upstream and live: Yarn's Debian repository signing subkeys expired
+on 2026-01-23, `mcr.microsoft.com/devcontainers/python` ships that apt source,
+and any Feature running `apt-get update` during install now dies with exit 100
+([devcontainers/images#1797](https://github.com/devcontainers/images/issues/1797)).
+We build from a Dockerfile that strips the source first.
+
+The tell is `/workspaces/.codespaces/.persistedshare/RECOVERY-REASON-FILE`.
+Worth knowing, because nothing else says so.
+
+**2. `hostRequirements` was hiding the cheap machine.** It asked for 4 cores, so
+only the 4-core type was offered and every learner would have burned their free
+tier at twice the rate. It is a *minimum*, not a choice.
+
+**3. The guidance was installed last.** `lab` went on PATH after a ~400 MB image
+pull — a 50-second window where the Codespace is Available, a terminal is open,
+and the one command that says what to do does not exist. Now installed first,
+and `lab` reports that setup is still running.
+
+**4. `docker compose pull --quiet` is not quiet.** It animates a spinner, and
+into a log file that arrives as ANSI cursor escapes: 316 KB of creation log,
+almost all of it spinner. `--progress quiet` fixes it.
+
+**5. No sshd.** Neither `gh codespace ssh` nor `gh codespace logs` works without
+one, which makes the container you most need to inspect the one you cannot get
+into.
+
+**6. No `gh`.** It is in GitHub's universal image, not the Python one. So
+`lab submit` pushed the branch and then died with `FileNotFoundError: 'gh'` —
+half its job done, none of it reported.
+
+**7. Git failures came out as Python tracebacks.** `CalledProcessError` tells a
+learner nothing. Each step now explains itself.
+
+**8. A race made the first submission unmergeable.** The welcome workflow
+rewrites `README.md` on `main` seconds after the repository is created. Open the
+Codespace fast enough and you cloned before that; your branch and `main` have
+then both edited `README.md` from different bases. Validation passes, and *then*
+the merge fails with "Pull Request has merge conflicts" — immediately after
+telling you that you passed. Fixed at both ends: `lab submit` rebases onto
+`origin/main`, and the bot merges `main` before advancing. Verified by
+reproducing the stale clone deliberately.
+
 ## Still to prove
 
-- **Codespaces.** The MVP was validated through Actions, and the devcontainer,
-  the `lab` command and the local validator were all exercised on a real machine.
-  But **no Codespace has ever been launched from this repository.** The first
-  launch is unproven, and it is the first thing a tester should do. What is most
-  likely to be wrong: image pull time on first create, and whether
-  `customizations.codespaces.openFiles` fires before `postCreateCommand`
-  finishes.
+- **Someone using a browser.** Everything below was driven through
+  `gh codespace ssh`. The VS Code *web* client is what a learner actually uses,
+  and `customizations.codespaces.openFiles` only works there — so whether the
+  README opens, and opens rendered, is still unverified.
 - **The welcome workflow — fired, once.** Generating `lab-welcome-test` from the
   template ran it on the creation push: README swapped to the guided version,
   "Start here" issue opened, 15s end to end. The `is_template` guard also
