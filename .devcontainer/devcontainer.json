@@ -1,0 +1,46 @@
+{
+  "name": "ATLAS Telemetry Lab",
+
+  // A plain container with Docker inside it, rather than a compose-orchestrated
+  // devcontainer.
+  //
+  // Two reasons. First, the lab *teaches* `docker compose up` — Module 1 opens
+  // with it — so having the stack silently already running would remove the
+  // first thing a learner is meant to do. Second, a compose-based devcontainer
+  // has to pin `workspaceFolder` to a path containing the repository name, and
+  // the repository name is whatever the learner chooses when they use the
+  // template. That mismatch breaks the container for everyone who does not
+  // happen to pick the name we guessed.
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  // 4 cores keeps the stack comfortable and the whole walkthrough well inside
+  // the free tier. It idles at ~442 MiB, so 2 cores works too if quota is tight.
+  "hostRequirements": { "cpus": 4, "memory": "8gb", "storage": "32gb" },
+
+  "forwardPorts": [8080, 9092, 13579, 15379],
+  "portsAttributes": {
+    "8080": { "label": "Kafka UI", "onAutoForward": "notify" },
+    "9092": { "label": "Kafka broker", "onAutoForward": "silent" },
+    "13579": { "label": "ATLAS Stream API", "onAutoForward": "silent" },
+    "15379": { "label": "Key Generator", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-azuretools.vscode-containers"],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.exclude": { "**/__pycache__": true }
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}

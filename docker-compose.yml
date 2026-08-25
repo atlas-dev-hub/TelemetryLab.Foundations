@@ -1,6 +1,6 @@
 # The ATLAS Telemetry Lab stack.
 #
-# Four services and a workspace. Everything here is free and licence-free -
+# Three services. Everything here is free and licence-free -
 # the Stream API and Key Generator images are published publicly by Motion
 # Applied, and Kafka is Apache Kafka in KRaft mode.
 #
@@ -11,25 +11,6 @@
 name: atlas-telemetry-lab
 
 services:
-  # The workspace you actually work in. In a Codespace or VS Code Dev
-  # Container this is the container your terminal lives in, on the same
-  # network as everything else - so the Stream API is reachable at
-  # `stream-api:13579` rather than through a published port.
-  workspace:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    volumes:
-      - ..:/workspaces:cached
-    command: sleep infinity
-    depends_on:
-      stream-api:
-        condition: service_started
-    environment:
-      STREAM_API_ADDRESS: stream-api:13579
-      KEY_GENERATOR_ADDRESS: key-generator:15379
-      KAFKA_BOOTSTRAP: kafka:9094
-
   kafka:
     image: apache/kafka:4.2.0
     ports:

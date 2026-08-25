@@ -33,7 +33,7 @@ DOCUMENT = """<!doctype html>
 <meta name="description" content="Learn to build on an open, real-time telemetry platform — by building on it. Nine modules, automatically assessed. Free, no licence, nothing to install.">
 <meta name="theme-color" content="#0A0D0F">
 <meta property="og:title" content="ATLAS Telemetry Lab">
-<meta property="og:description" content="A real-time telemetry platform, running in your browser in ninety seconds.">
+<meta property="og:description" content="A real-time telemetry platform, running in your browser with nothing installed.">
 <meta property="og:type" content="website">
 {head}
 </head>

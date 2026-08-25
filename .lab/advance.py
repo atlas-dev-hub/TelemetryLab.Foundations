@@ -43,13 +43,13 @@ def render(state: dict) -> str:
     ticks = " ".join(
         ("[x]" if i in done else "[ ]") + f" {i}" for i in range(1, TOTAL + 1)
     )
-    header = (
-        "# ATLAS Telemetry Lab\n\n"
-        "> Learn to build on an open, real-time telemetry platform — by building on it.\n\n"
-        f"**Progress:** {ticks}\n\n"
-        "---\n\n"
-    )
-    return header + body
+    # The header lives in .lab/header.md so the "use this template, do not
+    # fork" instructions stay in one place and cannot drift between rewrites.
+    header_path = os.path.join(LAB, "header.md")
+    with open(header_path, encoding="utf-8") as f:
+        header = f.read().rstrip()
+
+    return "\n\n".join([header, "---", f"**Progress:** {ticks}", "---", body])
 
 
 def main() -> int:
