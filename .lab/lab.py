@@ -32,6 +32,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAB = os.path.join(ROOT, ".lab")
 PROGRESS = os.path.join(LAB, "progress.json")
 VALIDATE = os.path.join(LAB, "validate.py")
+# Written by .devcontainer/post-create.sh when it finishes. `lab` is installed
+# first and the image pull happens last, so there is a window of a few minutes
+# where the command exists but the stack it talks about is not downloaded yet.
+SETUP_DONE = os.path.join(LAB, ".setup-complete")
 
 STACK = [("Stream API", 13579), ("Kafka", 9092), ("Key Generator", 15379)]
 UP = "docker compose up -d --wait kafka stream-api key-generator"
@@ -58,6 +62,11 @@ def port_open(port: int) -> bool:
     with socket.socket() as s:
         s.settimeout(0.4)
         return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def setting_up() -> bool:
+    """True while post-create is still working. Only meaningful in a container."""
+    return os.path.isdir("/workspaces") and not os.path.exists(SETUP_DONE)
 
 
 def stack_down() -> list[str]:
@@ -116,6 +125,13 @@ def cmd_status(_args) -> int:
     print(f"    3. Check your work:        {BOLD}lab check{OFF}")
     print(f"    4. Submit it:              {BOLD}lab submit{OFF}")
     print()
+
+    if setting_up():
+        print(f"  {YELLOW}Setup is still running.{OFF} It is downloading the telemetry stack —")
+        print("  a few minutes on a fresh Codespace. Read the module meanwhile; run")
+        print(f"  {BOLD}lab{OFF} again before you start step 1.")
+        print()
+        return 0
 
     missing = stack_down()
     if missing:

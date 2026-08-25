@@ -2,28 +2,19 @@
 #
 # Runs once, when the Codespace is created.
 #
-# Two jobs. Install things, and make sure the learner cannot end up staring at a
-# file tree with no idea what to do — which is what happens by default, because
-# a fresh Codespace tells you nothing about the repository you just opened.
+# Order matters here, and it is not the obvious one. The guidance — the `lab`
+# command and the terminal greeting — is installed FIRST, before any of the slow
+# work, because the learner can open a terminal the moment the Codespace appears
+# and the slow work takes minutes. Installed last, `lab` is missing during
+# exactly the window when someone is most likely to be looking for it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 WORKSPACE="$PWD"
+MARKER="$WORKSPACE/.lab/.setup-complete"
+rm -f "$MARKER"
 
-echo "Installing the producer's dependencies..."
-pip install --quiet --disable-pip-version-check -r producer/requirements.txt
+# --- guidance first, it costs a second ---------------------------------------
 
-echo "Installing the reference consumer..."
-(cd consumer && npm install --silent --no-audit --no-fund)
-
-# Pull the images now, so that when Module 1 asks for `docker compose up` it
-# starts in seconds rather than fetching ~400 MB while the learner watches a
-# progress bar. They still run the command — that is the module — but the
-# waiting happens here, before they are paying attention.
-echo "Pre-pulling the telemetry stack..."
-docker compose pull --quiet kafka stream-api key-generator ||
-  echo "  (pull failed — 'docker compose up' will fetch them instead)"
-
-# The `lab` command, on PATH.
 sudo tee /usr/local/bin/lab >/dev/null <<EOF
 #!/usr/bin/env bash
 exec python3 "$WORKSPACE/.lab/lab.py" "\$@"
@@ -48,5 +39,26 @@ fi
 EOF
 fi
 
+# --- then the slow part ------------------------------------------------------
+
+echo "Installing the producer's dependencies..."
+pip install --quiet --disable-pip-version-check -r producer/requirements.txt
+
+echo "Installing the reference consumer..."
+(cd consumer && npm install --silent --no-audit --no-fund)
+
+# Pull the images now, so that when Module 1 asks for `docker compose up` it
+# starts in seconds rather than fetching ~400 MB while the learner watches a
+# progress bar. They still run the command — that is the module — but the
+# waiting happens here, before they are paying attention.
+#
+# `--progress quiet` matters: without it compose animates a spinner, and since
+# this is running into a log file rather than a terminal, that arrives as
+# thousands of lines of ANSI cursor-movement escapes.
+echo "Pre-pulling the telemetry stack (this is the slow bit)..."
+docker compose --progress quiet pull kafka stream-api key-generator ||
+  echo "  (pull failed — 'docker compose up' will fetch them instead)"
+
+touch "$MARKER"
 echo
-echo "Ready. Open a terminal and run 'lab' at any point to see where you are."
+echo "Ready. Run 'lab' at any point to see where you are."
