@@ -79,6 +79,35 @@ def git(*args: str) -> str:
     ).stdout.strip()
 
 
+PUSH_HINT = (
+    "Git could not authenticate. Inside a Codespace this normally just works —\n"
+    "  if it does not, check you are in the integrated terminal rather than an\n"
+    "  ssh session, since the credentials live in the login shell environment.\n"
+    "  On your own machine, run `gh auth login` (or set up an SSH key) first."
+)
+
+
+def step(cmd: list[str], hint: str = "") -> bool:
+    """Run a git step, and explain rather than traceback when it fails.
+
+    A learner who sees a Python stack trace has been handed our problem, and
+    nothing in it tells them what to do next.
+    """
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    if r.returncode == 0:
+        return True
+    print()
+    print(f"  {RED}`{' '.join(cmd)}` failed.{OFF}")
+    detail = (r.stderr or r.stdout or "").strip()
+    for line in detail.splitlines()[:4]:
+        print(f"    {DIM}{line}{OFF}")
+    if hint:
+        print()
+        print(f"  {hint}")
+    print()
+    return False
+
+
 def handle() -> str:
     """The learner's GitHub handle, which is the owner of their own repository."""
     if os.environ.get("GITHUB_USER"):
@@ -194,14 +223,17 @@ def cmd_submit(_args) -> int:
 
     current = git("rev-parse", "--abbrev-ref", "HEAD")
     if current != branch:
-        subprocess.run(["git", "checkout", "-B", branch], cwd=ROOT, check=True)
+        if not step(["git", "checkout", "-B", branch]):
+            return 1
 
-    subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True)
+    if not step(["git", "add", "-A"]):
+        return 1
     if git("diff", "--cached", "--name-only"):
-        subprocess.run(
-            ["git", "commit", "-m", f"Module {module}"], cwd=ROOT, check=True
-        )
-    subprocess.run(["git", "push", "-u", "origin", branch], cwd=ROOT, check=True)
+        if not step(["git", "commit", "-m", f"Module {module}"]):
+            return 1
+
+    if not step(["git", "push", "-u", "origin", branch], hint=PUSH_HINT):
+        return 1
 
     title = f"Module {module}"
     pr = subprocess.run(
