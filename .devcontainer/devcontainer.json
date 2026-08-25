@@ -19,7 +19,13 @@
 
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // Not for the learner — they use the browser or VS Code, neither of which
+    // needs this. It is so that `gh codespace ssh` works at all, which is the
+    // only way to inspect a Codespace that has gone wrong from outside it.
+    // Without it both `gh codespace ssh` and `gh codespace logs` fail, and the
+    // container you most need to look at is the one you cannot get into.
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
 
   // A minimum, not a choice — GitHub offers every machine type that meets it,
