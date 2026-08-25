@@ -11,16 +11,24 @@
   // the repository name is whatever the learner chooses when they use the
   // template. That mismatch breaks the container for everyone who does not
   // happen to pick the name we guessed.
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  // Built from a Dockerfile rather than used directly, only so we can strip a
+  // broken apt source out of the upstream image before Features install on top
+  // of it. The Dockerfile explains why at length — it cost us a silent recovery
+  // container to find.
+  "build": { "dockerfile": "Dockerfile" },
 
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
 
-  // 4 cores keeps the stack comfortable and the whole walkthrough well inside
-  // the free tier. It idles at ~442 MiB, so 2 cores works too if quota is tight.
-  "hostRequirements": { "cpus": 4, "memory": "8gb", "storage": "32gb" },
+  // A minimum, not a choice — GitHub offers every machine type that meets it,
+  // smallest first. This was `cpus: 4`, which meant the 2-core machine was
+  // never offered and every learner burned free-tier hours at twice the rate
+  // (120 core-hours is 60 hours at 2 cores, 30 at 4). The stack idles at
+  // ~442 MiB, so 2 cores is genuinely enough; anyone who wants 4 can still pick
+  // it from the machine-type list.
+  "hostRequirements": { "cpus": 2, "memory": "8gb", "storage": "32gb" },
 
   "forwardPorts": [8080, 9092, 13579, 15379],
   "portsAttributes": {

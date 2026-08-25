@@ -26,6 +26,26 @@ This is **your** copy. Work here; nothing you do touches anyone else's.
 there. Use it as often as you like — it is free and it is local.
 
 <details>
+<summary>`lab` or `docker` not found?</summary>
+
+Then your Codespace did not build, and GitHub quietly gave you a **recovery
+container** instead — a bare Linux box with your files mounted and none of the
+tools. It looks like a working Codespace, which is what makes it confusing.
+
+Check with:
+
+```bash
+ls /workspaces/.codespaces/.persistedshare/RECOVERY-REASON-FILE
+```
+
+If that file exists, rebuild: **Command Palette** (`F1`) →
+**Codespaces: Rebuild Container**. If it fails again, the reason is in
+`/workspaces/.codespaces/.persistedshare/creation.log` — please open an issue
+and paste the first `ERROR` line from it.
+
+</details>
+
+<details>
 <summary>Prefer your own machine to a Codespace?</summary>
 
 Everything runs locally. You need Docker, Python 3.12+ and Node 22.15+.
