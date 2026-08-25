@@ -102,6 +102,39 @@ jobs:
 
       # --- everything below runs only on a pass ---------------------------
 
+      # The branch can legitimately be behind main before we touch it.
+      #
+      # The welcome workflow rewrites README.md on main within seconds of the
+      # repository being created. A learner who opens their Codespace quickly
+      # clones main *before* that commit lands, so their branch and main have
+      # both edited README.md from different bases — and the merge at the end
+      # fails with "Pull Request has merge conflicts" after the validation has
+      # already passed, which is a baffling thing to be shown.
+      #
+      # Only the two files the bot itself rewrites can conflict here, and
+      # advance.py overwrites both wholesale in the next step, so taking the
+      # branch's copy loses nothing. Anything else conflicting is a real
+      # conflict and we stop.
+      - name: Bring the branch up to date with main
+        run: |
+          git config user.name  "atlas-telemetry-lab[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git merge --no-edit origin/main; then
+            exit 0
+          fi
+          UNMERGED=$(git diff --name-only --diff-filter=U | sort | tr '\n' ' ')
+          echo "Conflicting: $UNMERGED"
+          for f in $UNMERGED; do
+            case "$f" in
+              README.md|.lab/progress.json) ;;
+              *) echo "::error::Unexpected merge conflict in $f"; exit 1 ;;
+            esac
+          done
+          git checkout --ours -- README.md .lab/progress.json 2>/dev/null || true
+          git add README.md .lab/progress.json
+          git -c core.editor=true commit --no-edit
+
       - name: Advance to the next module
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

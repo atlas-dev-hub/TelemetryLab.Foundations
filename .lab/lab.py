@@ -79,6 +79,12 @@ def git(*args: str) -> str:
     ).stdout.strip()
 
 
+REBASE_HINT = (
+    "Your work could not be replayed on top of the latest `main`. The rebase\n"
+    "  has been undone, so nothing is lost. Resolve it by hand with:\n"
+    "      git fetch origin main && git rebase origin/main"
+)
+
 PUSH_HINT = (
     "Git could not authenticate. Inside a Codespace this normally just works —\n"
     "  if it does not, check you are in the integrated terminal rather than an\n"
@@ -232,7 +238,20 @@ def cmd_submit(_args) -> int:
         if not step(["git", "commit", "-m", f"Module {module}"]):
             return 1
 
-    if not step(["git", "push", "-u", "origin", branch], hint=PUSH_HINT):
+    # Rebase onto current main before pushing.
+    #
+    # A repository generated from the template gets a README rewrite pushed to
+    # main by the welcome workflow moments later. Open the Codespace fast
+    # enough and you cloned before that; branch from there and your first pull
+    # request cannot be merged. Rebasing here means the learner never sees it.
+    if step(["git", "fetch", "origin", "main"]):
+        if not step(["git", "rebase", "origin/main"], hint=REBASE_HINT):
+            subprocess.run(["git", "rebase", "--abort"], cwd=ROOT,
+                           capture_output=True, text=True)
+            return 1
+
+    if not step(["git", "push", "--force-with-lease", "-u", "origin", branch],
+                hint=PUSH_HINT):
         return 1
 
     title = f"Module {module}"
