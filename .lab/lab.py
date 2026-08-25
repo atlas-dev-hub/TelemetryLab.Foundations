@@ -236,12 +236,18 @@ def cmd_submit(_args) -> int:
         return 1
 
     title = f"Module {module}"
-    pr = subprocess.run(
-        ["gh", "pr", "create", "--fill", "--base", "main", "--head", branch,
-         "--title", title, "--body", f"Submitting module {module}."],
-        cwd=ROOT, capture_output=True, text=True,
-    )
-    if pr.returncode == 0:
+    try:
+        pr = subprocess.run(
+            ["gh", "pr", "create", "--base", "main", "--head", branch,
+             "--title", title, "--body", f"Submitting module {module}."],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        # No GitHub CLI here. The push already worked, so the only thing left
+        # is a link — not an error.
+        pr = None
+
+    if pr is not None and pr.returncode == 0:
         print()
         print(f"  {GREEN}Pull request opened.{OFF} The bot is validating it now.")
         print(f"  {pr.stdout.strip()}")
@@ -251,17 +257,18 @@ def cmd_submit(_args) -> int:
         print()
         return 0
 
-    # gh missing or not authenticated - the push worked, so say what is left.
-    existing = "already exists" in (pr.stderr or "")
-    if existing:
+    # gh missing or not authenticated — the push worked, so say what is left.
+    err = (pr.stderr or "") if pr is not None else ""
+    if "already exists" in err:
         print(f"\n  {GREEN}Pushed.{OFF} The pull request already open for `{branch}` will re-run.\n")
         return 0
     url = git("remote", "get-url", "origin").removesuffix(".git")
     print()
     print(f"  {GREEN}Pushed `{branch}`.{OFF}")
-    print(f"  {YELLOW}Could not open the pull request for you{OFF} - open it here:")
+    print(f"  {YELLOW}Open the pull request here:{OFF}")
     print(f"      {url}/compare/main...{branch}?expand=1")
-    print(f"  {DIM}{(pr.stderr or '').strip().splitlines()[0] if pr.stderr else ''}{OFF}")
+    if err.strip():
+        print(f"  {DIM}{err.strip().splitlines()[0]}{OFF}")
     print()
     return 0
 

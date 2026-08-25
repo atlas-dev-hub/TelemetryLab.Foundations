@@ -25,7 +25,11 @@
     // only way to inspect a Codespace that has gone wrong from outside it.
     // Without it both `gh codespace ssh` and `gh codespace logs` fail, and the
     // container you most need to look at is the one you cannot get into.
-    "ghcr.io/devcontainers/features/sshd:1": {}
+    "ghcr.io/devcontainers/features/sshd:1": {},
+    // `gh` is NOT in the Python image — it is baked into GitHub's universal
+    // image, which is not what we build from. Without it `lab submit` cannot
+    // open the pull request, which is half the point of the command.
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
   // A minimum, not a choice — GitHub offers every machine type that meets it,
