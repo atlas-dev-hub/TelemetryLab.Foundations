@@ -13,7 +13,7 @@ hardware, no simulator, and nothing to install.
 ### 1. Make your own copy
 
 Click **`Use this template` → `Create a new repository`** at the top of this
-page. Name it whatever you like.
+page (`mat-docs/TelemetryLab.Foundations`). Name it whatever you like.
 
 You need your own copy because you will be opening pull requests against it and
 a bot will be committing your progress back to it. A fork would not work:

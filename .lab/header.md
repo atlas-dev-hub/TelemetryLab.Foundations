@@ -51,8 +51,9 @@ and paste the first `ERROR` line from it.
 Everything runs locally. You need Docker, Python 3.12+ and Node 22.15+.
 
 ```bash
-git clone <this repository>
-cd <this repository>
+# your copy, not the template
+git clone https://github.com/<you>/<your-repo>.git
+cd <your-repo>
 pip install -r producer/requirements.txt
 (cd consumer && npm install)
 alias lab='python .lab/lab.py'
