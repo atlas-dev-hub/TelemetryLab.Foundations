@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAB = os.path.join(ROOT, ".lab")
 PROGRESS = os.path.join(LAB, "progress.json")
@@ -173,6 +174,101 @@ def synced() -> bool:
     return True
 
 
+def _render(body: str) -> None:
+    """Markdown, lightly, for a terminal. Headings and bold only - anything more
+    and it stops looking like the tool and starts looking like a web page."""
+    import re
+    # Emphasis is resolved over the whole body rather than line by line: a
+    # **bold phrase** that wraps onto a second line would otherwise print its
+    # asterisks literally, which is worse than not having bold at all.
+    text = re.sub(r"\*\*(.+?)\*\*", lambda m: BOLD + m.group(1) + OFF, body, flags=re.S)
+    text = re.sub(r"(?<![*\w])\*([^*\n]+?)\*(?!\*)",
+                  lambda m: DIM + m.group(1) + OFF, text)
+    for line in text.rstrip().split("\n"):
+        if line.startswith("## "):
+            print(f"\n  {BOLD}{line[3:]}{OFF}")
+            continue
+        print("  " + line if line else "")
+
+
+def cmd_explain(args) -> int:
+    """The why behind the stage they are on, or any topic by name."""
+    import explain as ex
+
+    topics = ex.available()
+    if not topics:
+        print("No explanations are installed.")
+        return 1
+
+    name = getattr(args, "topic", None)
+    if name in ("list", "topics"):
+        name = None
+        args.list = True
+
+    if getattr(args, "list", False):
+        print()
+        print(f"  {BOLD}lab explain <topic>{OFF}")
+        print()
+        width = max(len(t) for t in topics)
+        current = ex.for_module(state()["module"])
+        for t, head in topics.items():
+            mark = f"  {DIM}(module {head['module']}){OFF}" if head.get("module") else ""
+            here = f"  {GREEN}<- you are here{OFF}" if t == current else ""
+            print(f"    {BOLD}{t:<{width}}{OFF}  {head.get('title', '')}{mark}{here}")
+        print()
+        return 0
+
+    if not name:
+        name = ex.for_module(state()["module"])
+        if not name:
+            args.list = True
+            return cmd_explain(args)
+
+    if name not in topics:
+        close = [t for t in topics if name in t or t in name]
+        print(f"\n  {RED}No topic called `{name}`.{OFF}"
+              + (f" Did you mean `{close[0]}`?" if close else ""))
+        print(f"  {DIM}lab explain --list{OFF}\n")
+        return 1
+
+    head, body = ex._split(os.path.join(ex.TOPICS_DIR, name + ".md"))
+    print()
+    print(f"  {BOLD}{head.get('title', name)}{OFF}")
+    if head.get("module"):
+        print(f"  {DIM}module {head['module']}{OFF}")
+    _render(body)
+
+    # The definitions, pulled out of this repository's own .proto files by
+    # message name. This is the part a learner cannot get from copying commands:
+    # the actual contract, with the comments the protocol authors wrote.
+    refs = (head.get("proto") or "").split()
+    shown = False
+    for ref in refs:
+        got = ex.proto_excerpt(ref)
+        if not got:
+            continue
+        text, where = got
+        if not shown:
+            print(f"\n  {BOLD}The definition{OFF}")
+            shown = True
+        print(f"\n  {DIM}{where}{OFF}")
+        for line in text.split("\n"):
+            print(f"    {DIM}{line}{OFF}" if line.strip().startswith("//") else f"    {line}")
+
+    print(f"\n  {BOLD}Where to look next{OFF}\n")
+    if head.get("code"):
+        print(f"    in this repo   {head['code']}")
+    for ref in refs:
+        got = ex.proto_excerpt(ref)
+        if got:
+            print(f"    protobuf       {got[1]}")
+            break
+    if head.get("docs"):
+        print(f"    documentation  {head['docs']}")
+    print()
+    return 0
+
+
 def cmd_status(_args) -> int:
     synced()
     st = state()
@@ -204,6 +300,8 @@ def cmd_status(_args) -> int:
     print("    2. Make the change it asks for")
     print(f"    3. Check your work:        {BOLD}lab check{OFF}")
     print(f"    4. Submit it:              {BOLD}lab submit{OFF}")
+    print()
+    print(f"    {DIM}Not sure why any of this works?  {OFF}{BOLD}lab explain{OFF}")
     print()
 
     if setting_up():
@@ -395,6 +493,9 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("status", help="where you are and what to do next")
     sub.add_parser("check", help="run the validator locally, before you push")
+    p_ex = sub.add_parser("explain", help="the why behind this stage, or any topic")
+    p_ex.add_argument("topic", nargs="?", help="topic name; omit for the one you are on")
+    p_ex.add_argument("--list", action="store_true", help="list the topics")
     p_submit = sub.add_parser("submit", help="branch, commit, push, open the pull request")
     p_submit.add_argument("--no-wait", action="store_true",
                           help="do not wait for the bot's verdict")
@@ -404,6 +505,7 @@ def main() -> int:
         None: cmd_status,
         "status": cmd_status,
         "check": cmd_check,
+        "explain": cmd_explain,
         "submit": cmd_submit,
     }[args.cmd](args)
 

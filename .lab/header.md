@@ -21,6 +21,7 @@ This is **your** copy. Work here; nothing you do touches anyone else's.
    |---|---|
    | `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |
    | `lab submit` | Branches, commits, pushes and opens the pull request. |
+   | `lab explain` | Why this stage works the way it does, with the real protobuf. |
 
 `lab check` runs the *identical* code the bot runs, so a pass here is a pass
 there. Use it as often as you like — it is free and it is local.
