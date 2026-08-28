@@ -27,6 +27,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAB = os.path.join(ROOT, ".lab")
@@ -129,7 +130,51 @@ def handle() -> str:
 # --- commands ---------------------------------------------------------------
 
 
+def synced() -> bool:
+    """Move onto main after the bot has merged a module.
+
+    The bot advances README.md and .lab/progress.json, squash-merges into main
+    and deletes the branch. The learner's checkout is still sitting on that
+    branch with the old files, so `lab` would keep reporting the module they
+    just finished, and the next module's work would start on the wrong branch.
+
+    Uncommitted work is never touched: if the tree is dirty this reports and
+    does nothing. The merge is --ff-only, so it cannot rewrite anything either.
+    """
+    subprocess.run(["git", "fetch", "--quiet", "--prune", "origin"],
+                   cwd=ROOT, capture_output=True, text=True)
+    behind = git("rev-list", "--count", "main..origin/main")
+    if not behind or behind == "0":
+        return False
+
+    if git("status", "--porcelain"):
+        print()
+        print(f"  {YELLOW}Your module was merged, but you have uncommitted changes.{OFF}")
+        print("  Commit or stash them, then run `lab` again to move on.")
+        print()
+        return False
+
+    was = git("rev-parse", "--abbrev-ref", "HEAD")
+    if was != "main":
+        if not step(["git", "checkout", "main"]):
+            return False
+    if not step(["git", "merge", "--ff-only", "origin/main"]):
+        return False
+
+    # The branch was squash-merged, so `git branch -d` would refuse it - the
+    # commits are not ancestors of main. It is gone from the remote, which is
+    # the thing that actually tells us it is finished with.
+    if was.startswith("module-") and not git("ls-remote", "--heads", "origin", was):
+        subprocess.run(["git", "branch", "-D", was], cwd=ROOT, capture_output=True, text=True)
+
+    print()
+    print(f"  {GREEN}Merged.{OFF} Pulled the advance onto main"
+          + (f" and cleaned up `{was}`." if was != "main" else "."))
+    return True
+
+
 def cmd_status(_args) -> int:
+    synced()
     st = state()
     module = st["module"]
     names = titles()
@@ -177,6 +222,8 @@ def cmd_status(_args) -> int:
 
 
 def cmd_check(_args) -> int:
+    # Otherwise a stale progress.json re-validates the module you just passed.
+    synced()
     st = state()
     module = st["module"]
     names = titles()
@@ -218,7 +265,45 @@ def cmd_check(_args) -> int:
     return result.returncode
 
 
-def cmd_submit(_args) -> int:
+def wait_for_bot(branch: str, minutes: int = 8) -> str | None:
+    """Block until the bot has ruled on the pull request.
+
+    Validation takes about two minutes. Waiting here means the learner sees the
+    verdict where they are working instead of going to find the pull request,
+    and it is what lets `lab submit` hand them straight to the next module.
+    """
+    deadline = time.time() + minutes * 60
+    print(f"  {DIM}Waiting for the bot. This usually takes about two minutes;")
+    print(f"  Ctrl-C to stop watching - it keeps running either way.{OFF}")
+    last = ""
+    try:
+        while time.time() < deadline:
+            r = subprocess.run(
+                ["gh", "pr", "view", branch, "--json", "state", "-q", ".state"],
+                cwd=ROOT, capture_output=True, text=True)
+            st = (r.stdout or "").strip()
+            if st in ("MERGED", "CLOSED"):
+                return st
+            if st and st != last:
+                last = st
+            time.sleep(10)
+    except KeyboardInterrupt:
+        print(f"\n  {DIM}Stopped watching. Run `lab` when it finishes.{OFF}\n")
+        return None
+    except FileNotFoundError:
+        return None
+    print(f"\n  {YELLOW}Still running after {minutes} minutes.{OFF} Run `lab` later to pick it up.\n")
+    return None
+
+
+def bot_verdict(branch: str) -> str:
+    r = subprocess.run(
+        ["gh", "pr", "view", branch, "--json", "comments",
+         "-q", ".comments[-1].body"], cwd=ROOT, capture_output=True, text=True)
+    return (r.stdout or "").strip()
+
+
+def cmd_submit(args) -> int:
     st = state()
     module = st["module"]
     branch = f"module-{module}"
@@ -268,12 +353,25 @@ def cmd_submit(_args) -> int:
 
     if pr is not None and pr.returncode == 0:
         print()
-        print(f"  {GREEN}Pull request opened.{OFF} The bot is validating it now.")
-        print(f"  {pr.stdout.strip()}")
+        print(f"  {GREEN}Pull request opened.{OFF}  {pr.stdout.strip()}")
         print()
-        print(f"  {DIM}It comments on the pull request either way. On a pass it advances")
-        print(f"  your README to the next module and merges.{OFF}")
-        print()
+        if getattr(args, "no_wait", False):
+            print(f"  {DIM}Not waiting. Run `lab` once it has merged.{OFF}\n")
+            return 0
+
+        outcome = wait_for_bot(branch)
+        verdict = bot_verdict(branch) if outcome else ""
+        if verdict:
+            print()
+            for line in verdict.splitlines():
+                print("  " + line)
+        if outcome == "MERGED":
+            synced()
+            print()
+            return cmd_status(args)
+        if outcome == "CLOSED":
+            print(f"\n  {RED}The pull request was closed without merging.{OFF}\n")
+            return 1
         return 0
 
     # gh missing or not authenticated — the push worked, so say what is left.
@@ -297,7 +395,9 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("status", help="where you are and what to do next")
     sub.add_parser("check", help="run the validator locally, before you push")
-    sub.add_parser("submit", help="branch, commit, push, open the pull request")
+    p_submit = sub.add_parser("submit", help="branch, commit, push, open the pull request")
+    p_submit.add_argument("--no-wait", action="store_true",
+                          help="do not wait for the bot's verdict")
     args = ap.parse_args()
 
     return {
