@@ -173,9 +173,14 @@ class AtlasWriter:
         self._write(payload, ptype, self.stream)
         self._write(payload, ptype, MAIN_STREAM)
 
-        # Rule 1: give the Stream API a moment to register the session before
-        # configuration arrives. Without this the config can land first and be
-        # discarded.
+        # Let the session settle before configuration follows it.
+        #
+        # The Stream API itself does not police this - its write path validates
+        # nothing except a duplicate StreamStarted packet, and it will happily
+        # route configuration for a session key it has never issued. What the
+        # pause protects is everything downstream: a consumer that receives
+        # configuration for a session it has not seen announced has nowhere to
+        # put it.
         time.sleep(1.0)
 
         config = open_data_pb2.ConfigurationPacket(
@@ -196,7 +201,10 @@ class AtlasWriter:
                 )
                 for c in channels
             ],
-            # Rule 3: exactly one group. More than one is silently rejected.
+            # One root group. Groups nest - a GroupDefinition has its own
+            # `groups` field - and the official example uses one root with
+            # Engine, Brakes and Position inside it. Eleven channels do not
+            # need a hierarchy, so this is a root and nothing else.
             group_definitions=[
                 open_data_pb2.GroupDefinition(
                     identifier=GROUP,
@@ -208,11 +216,21 @@ class AtlasWriter:
         )
         payload = config.SerializeToString()
         ptype = _packet_type(config)
-        # Rule 4: both streams, marked essential.
+        # Essential, and on both streams. `is_essential` is a flag the
+        # producer sets; the server mirrors such packets to the Essentials
+        # topic as well as the data topic, which is what a late-joining
+        # consumer replays to recover context.
         self._write(payload, ptype, MAIN_STREAM, essential=True)
         self._write(payload, ptype, self.stream, essential=True)
 
-        # Rule 2: one data format per parameter.
+        # One data format per parameter - the simplest case.
+        #
+        # GetParameterDataFormatId takes an ordered *list* of parameters and
+        # returns a single id for that combination; a packet using the id
+        # carries its sample columns in the same order. Registering a
+        # one-element list per parameter keeps the mapping trivial at the cost
+        # of a packet per channel. A real producer sending a wide row would
+        # register the whole list once and send one packet with N columns.
         self._data_format_ids = {
             c.identifier: self._dfmt_stub.GetParameterDataFormatId(
                 api_pb2.GetParameterDataFormatIdRequest(
@@ -227,7 +245,7 @@ class AtlasWriter:
     def write_batch(
         self, batch: dict[str, list[float]], start_time_ns: int, interval_ns: int
     ) -> None:
-        """Write one batch of samples. Rule 2: one packet per parameter."""
+        """Write one batch of samples, one packet per parameter."""
         for c in self._channels:
             values = batch.get(c.key)
             if not values:

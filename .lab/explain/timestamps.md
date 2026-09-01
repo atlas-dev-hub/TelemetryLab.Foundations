@@ -30,6 +30,13 @@ at packet boundaries, and lap times that are wrong by a few milliseconds in a
 way that changes every run. You will look at the producer last, because the
 producer is not complaining.
 
+The official example does the same conversion explicitly, from milliseconds:
+
+    var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000;
+
+which is worth noticing: the resolution you send is not the resolution of the
+field. That line records nanoseconds with millisecond granularity.
+
 ## Two things that will catch you out
 
 **Nanoseconds do not fit in a double.** A nanosecond epoch timestamp is about

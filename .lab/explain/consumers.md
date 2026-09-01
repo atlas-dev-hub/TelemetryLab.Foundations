@@ -27,6 +27,9 @@ A consumer is a loop over packets that does four things:
   types; treat them as skippable.
 - **Assuming one session.** A topic can carry interleaved sessions. Filter on
   the session key, or you will average two cars together.
+- **Assuming your columns.** Sample columns are positional against the
+  registered parameter list. Resolve the data format id every time; do not
+  cache column 0 as "speed" because it was last week.
 
 ## Compression
 
@@ -34,6 +37,14 @@ Batches are zstd-compressed on the Kafka side. Node has this built in from
 22.15 (node:zlib), so the reference consumer needs no native dependency — which
 matters more than it sounds, because a consumer that needs a compiler is a
 consumer that fails on somebody else's CI runner.
+
+## When data goes missing
+
+Three places, in order: the Stream API container's log (the write path catches
+its own exceptions and logs them rather than returning them), the
+`System.DeadLetter` topic (where packets that failed routing end up), and only
+then your consumer. The producer is the last place to look, because a producer
+that got no error genuinely did nothing wrong.
 
 ## In the wild
 

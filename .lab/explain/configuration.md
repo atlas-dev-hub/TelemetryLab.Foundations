@@ -1,45 +1,72 @@
 title: Configuration, and the packets that carry it
-proto: open_data:ConfigurationPacket open_data:DataFormatDefinitionPacket
+proto: open_data:ConfigurationPacket open_data:GroupDefinition
 code: producer/atlas_lab/writer.py  (start_session)
-docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/services/data-format-management/
+docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/examples/telemetry-example/
 ---
 ## What configuration is
 
 The description of a session that has to arrive before the numbers mean
-anything: the parameters, the group they belong to, and the data formats that
+anything: the parameters, the groups they belong to, and the data formats that
 map an id to a list of parameters.
 
-It is sent once, at the start, marked essential, on both streams.
+Sent once, near the start, with `IsEssential = true`.
 
-## The order that actually works
+## Nobody validates it for you
 
-This sequence is not arbitrary, and each step has a failure mode if you skip it:
+This is the thing worth knowing, and it is not written down anywhere obvious.
 
-1. **Create the session** and get a key.
-2. **Wait** for the Stream API to register it — configuration for a session it
-   does not know about is discarded, silently.
-3. **Send the configuration packet** — with exactly one group definition in it.
-4. **Send one data-format definition per parameter.**
-5. Only now, send data.
+**The Stream API never opens your configuration packet.** Search its source for
+`ConfigurationPacket` or `GroupDefinition` and you get nothing — it takes a
+`Packet` with a type string and an opaque `content` blob, works out which topic
+it belongs on, and writes it. It has no opinion about what is inside.
 
-Three of those five are things the platform will not tell you that you got
-wrong. It will accept the packets and give you a session that looks fine and
-carries nothing.
+So a malformed configuration is not rejected. It is delivered, perfectly, to a
+consumer that then cannot make sense of it. There is no error to find at the
+producer end because nothing at the producer end went wrong.
 
-## The four rules, written down
+Worse, the write path catches its own exceptions:
 
-The lab's writer carries these as comments because each one cost somebody a day:
+    catch (Exception ex) { this.apiLogger.Error(ex.ToString()); }
 
-- **Rule 1** — the session must be registered before configuration arrives
-- **Rule 2** — one data format per parameter
-- **Rule 3** — exactly one GroupDefinition per packet; more is silently rejected
-- **Rule 4** — configuration goes to both streams, marked essential
+Failures go to the server's log, not back down the wire. If something is being
+dropped, the server knows and you do not — so when a session arrives empty,
+read the Stream API container's logs before you start re-reading your producer.
 
-Rule 5 lives in the producer rather than the writer: timestamps must be
-contiguous. That is what Module 3 is about.
+## Groups are a tree, not a list
+
+The pattern in the official example is **one root group with the rest nested
+inside it**, not a flat list:
+
+    VehicleTelemetry
+      +- Engine
+      +- Brakes
+      +- Position
+
+A `GroupDefinition` has its own `Groups` field holding child definitions, and
+each `ParameterDefinition` names the group it belongs to by identifier. That is
+how you organise a car with two hundred channels so a consumer can show them as
+a tree instead of one flat list of two hundred names.
+
+The lab sends a single group because it has eleven channels and no need for a
+hierarchy. Do not read that as a limit.
+
+## Data formats map a list, not a parameter
+
+`GetParameterDataFormatId` takes **a list of parameters and returns one id for
+that combination**:
+
+    Parameters = { "vCar:Chassis", "NGear:Chassis", "NEngine:FIA" }  ->  id
+
+A `PeriodicDataPacket` then carries that id and its sample columns **in the same
+order as the list**. Column 0 is `vCar`, column 1 is `NGear`, column 2 is
+`NEngine`. Register a different list and you get a different id.
+
+Get the order wrong and every value lands on the wrong channel, with no error,
+at plausible-looking magnitudes. That is the single most expensive mistake in
+this whole protocol.
 
 ## In the wild
 
-If a consumer can see your session but no channels, you have hit Rule 1 or
-Rule 3. Check those two before anything else — between them they account for
-most first integrations that connect fine and produce nothing.
+Send the configuration before any data, and treat "the consumer sees my session
+but no channels" as a configuration problem rather than a connection one. The
+connection is almost never the issue — the Stream API would have told you.

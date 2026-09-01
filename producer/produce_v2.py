@@ -108,7 +108,7 @@ def main() -> int:
     interval_ns = int(1e9 / args.rate)
     batch_size = max(1, int(args.rate * args.batch_ms / 1000))
 
-    # Rule 5: timestamps must be contiguous. Track a running start time and
+    # Timestamps must be contiguous. Track a running start time and
     # advance it by exactly the batch duration each time, rather than reading
     # the clock again - clock reads drift and leave gaps in the trace.
     timestamp_ns = time.time_ns()
