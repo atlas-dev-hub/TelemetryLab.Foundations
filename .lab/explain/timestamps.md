@@ -3,6 +3,7 @@ module: 3
 proto: open_data:PeriodicDataPacket open_data:SampleDataFormat
 code: producer/produce.py  (the timestamp_ns loop)
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/examples/telemetry-example/
+source: https://github.com/Software-Products/MA.DataPlatforms.Protocol
 ---
 ## How time works here
 

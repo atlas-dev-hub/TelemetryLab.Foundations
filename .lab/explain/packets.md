@@ -3,6 +3,7 @@ module: 4
 proto: open_data:Packet open_data:PeriodicDataPacket open_data:SampleColumn
 code: consumer/src/consume.js
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/services/packet-reader/
+source: https://github.com/Software-Products/MA.DataPlatforms.Protocol
 ---
 ## The envelope
 

@@ -3,6 +3,7 @@ module: 2
 proto: open_data:ParameterDefinition open_data:GroupDefinition
 code: producer/atlas_lab/channels.py
 docs: https://atlas.motionapplied.com/developer-resources/rta/worked-guide/configuration/channels-parameters/
+source: https://github.com/Software-Products/MA.DataPlatforms.Protocol
 ---
 ## What a parameter is
 

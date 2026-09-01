@@ -29,14 +29,19 @@ When the terminal appears it tells you exactly where you are and what to do.
 
 ### 3. Run `lab`
 
-Everything after that is driven from three commands, and the terminal reminds
-you of them:
+Everything after that is four commands, and the terminal reminds you of them:
 
 | Command | What it does |
 |---|---|
 | `lab` | Where you are and what to do next |
+| `lab explain` | Why this stage works the way it does, with the real protobuf |
 | `lab check` | Runs the real validator locally, in seconds |
-| `lab submit` | Branches, commits, pushes, opens the pull request |
+| `lab submit` | Branches, pushes, opens the pull request, waits for the verdict |
+
+`lab check` runs the identical code the bot runs, so a pass locally is a pass in
+CI. `lab submit` then waits for the bot, prints its comment where you are
+working, and moves you onto the next module once it merges — no `git pull`
+needed.
 
 ---
 
@@ -57,6 +62,24 @@ by hand on every project.
 | 2 | Add a channel | **Parameter definitions** — identity, units, range, rate, in-band |
 | 3 | Fix the broken producer | **Contiguous time** — a failure that reports success |
 | 4 | Write your first consumer | Reading a stream you were never told the shape of |
+
+## Understanding it, not just passing it
+
+Every module has a `lab explain` topic behind it, and there are eight in total —
+sessions, parameters, timestamps, packets, configuration, streams, the Stream
+API and consumers.
+
+Each one shows the **real protobuf definitions**, read out of this repository's
+own `.proto` files at run time, and each ends with how to apply the idea to
+systems of your own. The protocol details in them are checked against the
+[Stream API](https://github.com/Software-Products/MA.DataPlatforms.StreamApi)
+and [Protocol](https://github.com/Software-Products/MA.DataPlatforms.Protocol)
+source, not written from memory.
+
+```bash
+lab explain            # the topic behind the module you are on
+lab explain --list     # all eight
+```
 
 ## What is running
 

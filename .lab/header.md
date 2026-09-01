@@ -19,12 +19,17 @@ This is **your** copy. Work here; nothing you do touches anyone else's.
 
    | Command | What it does |
    |---|---|
-   | `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |
-   | `lab submit` | Branches, commits, pushes and opens the pull request. |
    | `lab explain` | Why this stage works the way it does, with the real protobuf. |
+   | `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |
+   | `lab submit` | Pushes, opens the pull request, and waits for the verdict. |
 
 `lab check` runs the *identical* code the bot runs, so a pass here is a pass
 there. Use it as often as you like — it is free and it is local.
+
+`lab submit` stays with you: it waits for the bot, prints what it found, and
+moves you onto the next module once it merges. You never need to
+`git checkout main && git pull` — press Ctrl-C if you would rather not wait, and
+run `lab` later to pick up where it got to.
 
 <details>
 <summary>`lab` or `docker` not found?</summary>

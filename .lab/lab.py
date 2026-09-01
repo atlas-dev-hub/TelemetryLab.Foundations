@@ -10,12 +10,16 @@ find it, open it, and scroll to the right place.
 So the terminal answers instead, because the terminal is where they already are:
 
     lab            where you are and what to do next
+    lab explain    why this stage works the way it does, with the real protobuf
     lab check      run the real validator here, before you push
-    lab submit     branch, commit, push, open the pull request
+    lab submit     push, open the pull request, wait for the verdict, move on
 
 `lab check` is the important one. Without it the feedback loop is: push, wait
 two minutes for CI, read a comment, fix, push again. With it the loop is a few
 seconds and runs the *identical* validator, so a local pass means a CI pass.
+
+`lab explain` is the one that decides whether anybody leaves here able to build
+something. The modules teach the commands; explain teaches the platform.
 """
 
 from __future__ import annotations
@@ -265,6 +269,8 @@ def cmd_explain(args) -> int:
             break
     if head.get("docs"):
         print(f"    documentation  {head['docs']}")
+    if head.get("source"):
+        print(f"    platform source {head['source']}")
     print()
     return 0
 

@@ -2,6 +2,7 @@ title: The Stream API, and why producers never write to Kafka
 proto: api:PacketWriterService api:SessionManagementService
 code: producer/atlas_lab/writer.py  (connect)
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/getting-started/overview/
+source: https://github.com/Software-Products/MA.DataPlatforms.StreamApi
 ---
 ## What sits where
 

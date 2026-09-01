@@ -2,6 +2,7 @@ title: Configuration, and the packets that carry it
 proto: open_data:ConfigurationPacket open_data:GroupDefinition
 code: producer/atlas_lab/writer.py  (start_session)
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/examples/telemetry-example/
+source: https://github.com/Software-Products/MA.DataPlatforms.StreamApi
 ---
 ## What configuration is
 
@@ -20,9 +21,10 @@ This is the thing worth knowing, and it is not written down anywhere obvious.
 `Packet` with a type string and an opaque `content` blob, works out which topic
 it belongs on, and writes it. It has no opinion about what is inside.
 
-So a malformed configuration is not rejected. It is delivered, perfectly, to a
-consumer that then cannot make sense of it. There is no error to find at the
-producer end because nothing at the producer end went wrong.
+So a malformed configuration is not rejected. It is delivered, perfectly, to
+whatever is reading — ATLAS, your own tooling, somebody else's dashboard — and
+that is where it stops making sense. There is no error to find at the producer
+end because nothing at the producer end went wrong.
 
 Worse, the write path catches its own exceptions:
 
@@ -67,6 +69,8 @@ this whole protocol.
 
 ## In the wild
 
-Send the configuration before any data, and treat "the consumer sees my session
-but no channels" as a configuration problem rather than a connection one. The
-connection is almost never the issue — the Stream API would have told you.
+Send the configuration before any data, and treat "it can see my session but no
+channels" as a configuration problem rather than a connection one — whether the
+thing reading is ATLAS, a dashboard or a script you wrote this morning. The
+connection is almost never the issue; the Stream API would have refused to
+connect at all.

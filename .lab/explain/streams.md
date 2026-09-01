@@ -2,6 +2,7 @@ title: Streams, topics and what "essential" means
 proto: open_data:Packet open_data:StreamStartedPacket
 code: producer/atlas_lab/writer.py  (_write)
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/configuration/server-config/
+source: https://github.com/Software-Products/MA.DataPlatforms.StreamApi
 ---
 ## The topics, as the router actually builds them
 

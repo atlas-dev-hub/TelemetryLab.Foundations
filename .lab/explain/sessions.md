@@ -3,6 +3,7 @@ module: 1
 proto: open_data:NewSessionPacket api:CreateSessionRequest
 code: producer/atlas_lab/writer.py  (start_session, end_session)
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/services/session-management/
+source: https://github.com/Software-Products/MA.DataPlatforms.StreamApi
 ---
 ## What a session is
 

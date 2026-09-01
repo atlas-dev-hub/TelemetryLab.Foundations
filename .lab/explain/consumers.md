@@ -2,8 +2,13 @@ title: Writing a consumer that survives
 proto: open_data:Packet api:PacketReaderService
 code: consumer/src/consume.js
 docs: https://atlas.motionapplied.com/developer-resources/secu4/stream_api/reference_docs/services/packet-reader/
+source: https://github.com/Software-Products/MA.DataPlatforms.Protocol
 ---
 ## The shape of one
+
+"Consumer" here means anything reading the stream — ATLAS itself, a dashboard,
+a recorder, a script you wrote this morning. They all have the same job, and
+this is what Module 04 has you build.
 
 A consumer is a loop over packets that does four things:
 
