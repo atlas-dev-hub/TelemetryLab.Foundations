@@ -7,3 +7,4 @@ __pycache__/
 site/dist/
 site/public/lap.json
 .lab/.setup-complete
+.lab/.share-asked

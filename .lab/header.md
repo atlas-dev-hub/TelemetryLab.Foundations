@@ -22,6 +22,7 @@ This is **your** copy. Work here; nothing you do touches anyone else's.
    | `lab explain` | Why this stage works the way it does, with the real protobuf. |
    | `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |
    | `lab submit` | Pushes, opens the pull request, and waits for the verdict. |
+   | `lab share` | Opt in or out of anonymous progress reporting. Off by default. |
 
 `lab check` runs the *identical* code the bot runs, so a pass here is a pass
 there. Use it as often as you like — it is free and it is local.
@@ -65,5 +66,27 @@ pip install -r producer/requirements.txt
 alias lab='python .lab/lab.py'
 lab
 ```
+
+</details>
+
+<details>
+<summary>Sharing progress (off unless you say yes)</summary>
+
+The first time you run `lab submit` it asks once whether to share anonymous
+progress with the course authors. If you say yes, each time the bot grades a
+pull request it sends: the module number, pass or fail, and a random ID for
+this copy of the course. Not your username, not your repository name, not your
+code. It tells us which module people get stuck on, and nothing else.
+
+Change your mind at any time — it takes effect on your next `lab submit`:
+
+```bash
+lab share off
+lab share on
+lab share        # what it is set to now
+```
+
+Nothing about it can affect your grade. Details:
+<https://atlastelemetrylab.netlify.app/privacy/>
 
 </details>

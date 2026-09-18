@@ -21,6 +21,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # For the opt-in progress report only: lets the run prove to our endpoint
+  # that it really is a validate.yml run, without a shared secret in a public
+  # template.
+  id-token: write
 
 concurrency:
   group: validate-${{ github.ref }}
@@ -93,6 +97,19 @@ jobs:
               repo: context.repo.repo,
               body: `${report}\n\n<sub>[Validation run](${run})</sub>`,
             });
+
+      # Opt-in, anonymous, and unable to fail the grade: continue-on-error, the
+      # step timeout, `|| true`, and report.py's own catch-all are four
+      # independent ways this can only ever be a no-op.
+      - name: Report progress (opt-in)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          LAB_MODULE: ${{ steps.module.outputs.number }}
+          LAB_PASSED: ${{ steps.validate.outputs.outcome == '0' }}
+          LAB_ENDPOINT: ${{ vars.LAB_PROGRESS_ENDPOINT || 'https://atlastelemetrylab.netlify.app/api/progress' }}
+        run: python .lab/report.py || true
 
       - name: Stop here if it did not pass
         if: steps.validate.outputs.outcome != '0'

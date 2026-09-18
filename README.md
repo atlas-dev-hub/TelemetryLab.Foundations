@@ -37,11 +37,21 @@ Everything after that is four commands, and the terminal reminds you of them:
 | `lab explain` | Why this stage works the way it does, with the real protobuf |
 | `lab check` | Runs the real validator locally, in seconds |
 | `lab submit` | Branches, pushes, opens the pull request, waits for the verdict |
+| `lab share` | Opt in or out of anonymous progress reporting |
 
 `lab check` runs the identical code the bot runs, so a pass locally is a pass in
 CI. `lab submit` then waits for the bot, prints its comment where you are
 working, and moves you onto the next module once it merges — no `git pull`
 needed.
+
+### Sharing progress
+
+Off unless you say yes. The first `lab submit` asks once. If you opt in, each
+time the bot grades a pull request it sends the module number, pass or fail,
+and a random ID for your copy of the course — not your username, not your
+repository name, not your code. It tells us which module people get stuck on.
+`lab share off` turns it off again from your next submit, and nothing about it
+can affect a grade. Details: <https://atlastelemetrylab.netlify.app/privacy/>
 
 ---
 

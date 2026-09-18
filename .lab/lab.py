@@ -13,6 +13,7 @@ So the terminal answers instead, because the terminal is where they already are:
     lab explain    why this stage works the way it does, with the real protobuf
     lab check      run the real validator here, before you push
     lab submit     push, open the pull request, wait for the verdict, move on
+    lab share      opt in or out of anonymous progress reporting
 
 `lab check` is the important one. Without it the feedback loop is: push, wait
 two minutes for CI, read a comment, fix, push again. With it the loop is a few
@@ -42,6 +43,10 @@ VALIDATE = os.path.join(LAB, "validate.py")
 # first and the image pull happens last, so there is a window of a few minutes
 # where the command exists but the stack it talks about is not downloaded yet.
 SETUP_DONE = os.path.join(LAB, ".setup-complete")
+# Touched once the learner has been asked about progress sharing, so the
+# question is never asked twice on this machine even if they never answered.
+SHARE_ASKED = os.path.join(LAB, ".share-asked")
+PRIVACY_URL = "https://atlastelemetrylab.netlify.app/privacy/"
 
 STACK = [("Stream API", 13579), ("Kafka", 9092), ("Key Generator", 15379)]
 UP = "docker compose up -d --wait kafka stream-api key-generator"
@@ -62,6 +67,14 @@ def titles() -> dict[int, str]:
 def state() -> dict:
     with open(PROGRESS, encoding="utf-8") as f:
         return json.load(f)
+
+
+def save_state(st: dict) -> None:
+    # Same bytes advance.py writes, so the bot's commit and ours never differ
+    # in whitespace alone.
+    with open(PROGRESS, "w", encoding="utf-8") as f:
+        json.dump(st, f, indent=2)
+        f.write("\n")
 
 
 def port_open(port: int) -> bool:
@@ -130,6 +143,102 @@ def handle() -> str:
         if "/" in tail:
             return tail.split("/")[0]
     return ""
+
+
+# --- progress sharing --------------------------------------------------------
+#
+# Off unless the learner says yes. When it is on, the grading workflow sends
+# one anonymous event per run (see .lab/report.py). Nothing here can affect a
+# grade: `lab` only ever writes a flag into progress.json.
+
+
+def set_share(st: dict, enabled: bool) -> None:
+    """Flip the flag, keeping the same random ID across on/off/on."""
+    import uuid
+    from datetime import date
+
+    share = st.get("share") or {}
+    st["share"] = {
+        "enabled": enabled,
+        "id": share.get("id") or str(uuid.uuid4()),
+        "since": share.get("since") or date.today().isoformat(),
+    }
+    save_state(st)
+    open(SHARE_ASKED, "w").close()
+
+
+def share_prompt() -> None:
+    """Ask once, at the first `lab submit`, and only when a person is there.
+
+    Runs before `git add -A` so the answer travels in the same pull request the
+    bot is about to grade. A non-tty (the bashrc hook, a pipe, CI) is never
+    asked, and neither is anyone who has answered before on any machine.
+    """
+    if "share" in state() or os.path.exists(SHARE_ASKED):
+        return
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+        return
+
+    print()
+    print(f"  {BOLD}Share anonymous progress with the course authors? [y/N]{OFF}")
+    print("    When the bot grades a pull request it would send: the module number,")
+    print("    pass or fail, and a random ID for this copy of the course. Not your")
+    print("    username, not your code. It tells us which module people get stuck on.")
+    print(f"    Change it any time:  {BOLD}lab share off{OFF}   {DIM}(takes effect on your next submit){OFF}")
+    print(f"    {DIM}Details: {PRIVACY_URL}{OFF}")
+    print()
+    try:
+        answer = input("  > ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        answer = ""
+    print()
+
+    st = state()
+    if answer in ("y", "yes"):
+        set_share(st, True)
+        print(f"  {GREEN}Sharing on.{OFF} {DIM}Thank you. `lab share off` turns it off again.{OFF}")
+    else:
+        # Recorded as a decision, not just a marker file, so a second machine
+        # (or a rebuilt Codespace) does not ask again.
+        st["share"] = {"enabled": False}
+        save_state(st)
+        open(SHARE_ASKED, "w").close()
+        print(f"  {DIM}Sharing off. `lab share on` if you change your mind.{OFF}")
+    print()
+
+
+def cmd_share(args) -> int:
+    mode = getattr(args, "mode", "status") or "status"
+    st = state()
+    share = st.get("share")
+
+    if mode == "on":
+        set_share(st, True)
+        print(f"\n  {GREEN}Progress sharing on{OFF}, from your next `lab submit`."
+              f"  {DIM}lab share off{OFF} to stop.\n")
+        return 0
+    if mode == "off":
+        set_share(st, False)
+        print(f"\n  Progress sharing {BOLD}off{OFF}, from your next `lab submit`."
+              f"  {DIM}lab share on{OFF} to start again.\n")
+        return 0
+
+    print()
+    if share is None:
+        print(f"  Progress sharing: {BOLD}off{OFF} {DIM}(you have not been asked yet; `lab submit` asks once){OFF}")
+    elif share.get("enabled") is True:
+        print(f"  Progress sharing: {GREEN}on{OFF}  {DIM}·  lab share off{OFF}")
+    else:
+        print(f"  Progress sharing: {BOLD}off{OFF}  {DIM}·  lab share on{OFF}")
+    print()
+    print("  When on, each time the bot grades a pull request it sends the module")
+    print("  number, pass or fail, and a random ID for this copy of the course.")
+    print("  Never your username, repository name or code.")
+    print(f"  {DIM}{PRIVACY_URL}{OFF}")
+    print()
+    return 0
 
 
 # --- commands ---------------------------------------------------------------
@@ -295,6 +404,14 @@ def cmd_status(_args) -> int:
             print(f"  {DIM}[ ] {n}. {names[n]}{OFF}")
     print()
 
+    share = st.get("share")
+    if share is not None:
+        if share.get("enabled") is True:
+            print(f"  {DIM}Progress sharing: on  ·  lab share off{OFF}")
+        else:
+            print(f"  {DIM}Progress sharing: off  ·  lab share on{OFF}")
+        print()
+
     if module > total:
         print(f"  {GREEN}All {total} modules complete.{OFF} See README.md.")
         print()
@@ -416,6 +533,10 @@ def cmd_submit(args) -> int:
         print("Nothing to submit - you have not changed anything yet. See README.md.")
         return 1
 
+    # After the nothing-to-submit check: answering writes progress.json, which
+    # would otherwise turn an empty submit into a pull request of just that.
+    share_prompt()
+
     current = git("rev-parse", "--abbrev-ref", "HEAD")
     if current != branch:
         if not step(["git", "checkout", "-B", branch]):
@@ -505,6 +626,9 @@ def main() -> int:
     p_submit = sub.add_parser("submit", help="branch, commit, push, open the pull request")
     p_submit.add_argument("--no-wait", action="store_true",
                           help="do not wait for the bot's verdict")
+    p_share = sub.add_parser("share", help="opt in or out of anonymous progress reporting")
+    p_share.add_argument("mode", nargs="?", choices=["on", "off", "status"], default="status",
+                         help="on, off, or status (the default)")
     args = ap.parse_args()
 
     return {
@@ -513,6 +637,7 @@ def main() -> int:
         "check": cmd_check,
         "explain": cmd_explain,
         "submit": cmd_submit,
+        "share": cmd_share,
     }[args.cmd](args)
 
 
