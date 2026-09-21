@@ -1,43 +1,42 @@
-# ATLAS Telemetry Lab
+<p align="center"><img src=".github/readme/banner.svg" alt="ATLAS Telemetry Lab. A lap trace drawn from real telemetry, coloured by speed." width="100%"></p>
 
-> Learn to build on an open, real-time telemetry platform — by building on it.
-
-This is **your** copy. Work here; nothing you do touches anyone else's.
+This is your copy. Work here; nothing you do touches anyone else's.
 
 ## Do this now
 
-1. **Open a Codespace.** `Code` → `Codespaces` → `Create codespace on main`.
-   First build takes a few minutes — it is installing Docker, Python and Node so
-   that you do not have to. Later opens are quick.
-2. **Wait for the terminal.** When it appears it will print where you are and
-   what to do. You can ask it again at any time:
+1. Open a Codespace. `Code` → `Codespaces` → `Create codespace on main`. The
+   first build takes a few minutes while it installs Docker, Python and Node.
+   Later opens are quick.
+2. Wait for the terminal. It runs `lab` on first open and prints where you are
+   and what to do. Run it again at any time:
 
    ```bash
    lab
    ```
-3. **Follow the module below.** Then:
+3. Follow the module below. Then:
 
    | Command | What it does |
    |---|---|
-   | `lab explain` | Why this stage works the way it does, with the real protobuf. |
-   | `lab check` | Runs the real validator here, in seconds. Nothing is pushed. |
-   | `lab submit` | Pushes, opens the pull request, and waits for the verdict. |
-   | `lab share` | Opt in or out of anonymous progress reporting. Off by default. |
+   | `lab` | Where you are and what to do next |
+   | `lab explain` | Why this module works the way it does, with the real protobuf |
+   | `lab check` | Runs the validator here, in seconds. Nothing is pushed |
+   | `lab submit` | Pushes, opens the pull request and waits for the verdict |
+   | `lab share` | Turns anonymous progress reporting on or off. Off by default |
 
-`lab check` runs the *identical* code the bot runs, so a pass here is a pass
-there. Use it as often as you like — it is free and it is local.
+`lab check` runs the same checks as the bot. If it passes here, it passes in
+CI. Run it as often as you like.
 
-`lab submit` stays with you: it waits for the bot, prints what it found, and
-moves you onto the next module once it merges. You never need to
-`git checkout main && git pull` — press Ctrl-C if you would rather not wait, and
-run `lab` later to pick up where it got to.
+`lab submit` waits for the bot, prints what it found, and moves you to the next
+module once the pull request merges. You never need to
+`git checkout main && git pull`. Press Ctrl-C if you would rather not wait, and
+run `lab` later to catch up.
 
 <details>
 <summary>`lab` or `docker` not found?</summary>
 
-Then your Codespace did not build, and GitHub quietly gave you a **recovery
-container** instead — a bare Linux box with your files mounted and none of the
-tools. It looks like a working Codespace, which is what makes it confusing.
+Your Codespace did not build, and GitHub gave you a recovery container instead.
+That is a bare Linux box with your files mounted and none of the tools. It
+looks like a working Codespace.
 
 Check with:
 
@@ -45,10 +44,10 @@ Check with:
 ls /workspaces/.codespaces/.persistedshare/RECOVERY-REASON-FILE
 ```
 
-If that file exists, rebuild: **Command Palette** (`F1`) →
-**Codespaces: Rebuild Container**. If it fails again, the reason is in
-`/workspaces/.codespaces/.persistedshare/creation.log` — please open an issue
-and paste the first `ERROR` line from it.
+If that file exists, open the Command Palette (`F1`) and run
+`Codespaces: Rebuild Container`. If it fails again, the reason is in
+`/workspaces/.codespaces/.persistedshare/creation.log`. Open an issue and paste
+the first `ERROR` line from it.
 
 </details>
 
@@ -71,15 +70,15 @@ lab
 
 ## Sharing your progress (optional, off by default)
 
-This collects nothing unless you turn it on. The first time you run `lab
-submit`, it asks once whether to share anonymous progress with the course
-authors — say nothing, or say no, and nothing is ever sent.
+The course sends no data unless you opt in. The first time you run
+`lab submit`, it asks whether to share anonymous progress with the course
+authors. Answer no, or ignore the prompt, and it sends nothing.
 
 If you opt in, each time the bot grades a pull request it sends the module
-number, pass or fail, and a random ID for this copy of the course. Never your
-username, your repository name, or your code — you can read exactly what it
-sends in [`.lab/report.py`](.lab/report.py). Nothing about it can affect your
-grade.
+number, pass or fail, the course name and template version, and a random ID for
+this copy. The report contains no username, repository name, or code.
+[`.lab/report.py`](.lab/report.py) builds it in your own Actions and posts it
+to Google Analytics. It has no effect on your grade.
 
 ```bash
 lab share on       # start sharing

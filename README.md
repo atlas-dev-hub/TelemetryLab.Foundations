@@ -1,76 +1,93 @@
-# ATLAS Telemetry Lab
+<p align="center"><img src=".github/readme/atlas-mark.png" alt="ATLAS mark" width="56"></p>
+<p align="center"><img src=".github/readme/banner.svg" alt="ATLAS Telemetry Lab. A lap trace drawn from real telemetry, coloured by speed." width="100%"></p>
 
-> Learn to build on an open, real-time telemetry platform — by building on it.
+<p align="center">
+<img src="https://img.shields.io/badge/cost-free-FF6600?style=flat-square" alt="cost: free">
+<img src="https://img.shields.io/badge/modules-4-FF6600?style=flat-square" alt="modules: 4">
+<img src="https://img.shields.io/badge/runs%20in-GitHub%20Codespaces-272727?style=flat-square" alt="runs in: GitHub Codespaces">
+<img src="https://img.shields.io/badge/licence-none%20needed-272727?style=flat-square" alt="licence: none needed">
+</p>
 
-Four modules. A real broker, a real streaming API, a synthetic race car, and a
-bot that checks your work and advances you when it passes. No licence, no
-hardware, no simulator, and nothing to install.
+ATLAS Telemetry Lab is a free course in Motion Applied's ATLAS Open Streaming.
+It has four modules. You work against a Kafka broker, a streaming API and a
+synthetic race car, in a copy of this repository that you own. A bot checks
+each pull request and moves you to the next module when it passes. There is nothing
+to license or install.
 
 ## Start
 
 **Do not clone this repository, and do not fork it.**
 
-### 1. Make your own copy
+1. Make your own copy. Click `Use this template` → `Create a new repository` at
+   the top of this page. Name it whatever you like. You open pull requests
+   against your copy, and the bot commits your progress to it.
+2. Open a Codespace on your copy. `Code` → `Codespaces` →
+   `Create codespace on main`. The first build takes a few minutes while it
+   installs Docker, Python and Node.
+3. Run `lab`. The terminal runs it for you on first open. It prints where you
+   are and what to do next.
 
-Click **`Use this template` → `Create a new repository`** at the top of this
-page (`mat-docs/TelemetryLab.Foundations`). Name it whatever you like.
+## Never used Codespaces?
 
-You need your own copy because you will be opening pull requests against it and
-a bot will be committing your progress back to it. A fork would not work:
-GitHub disables Actions in forks by default, and a fork's pull requests default
-to targeting *this* repository rather than yours.
+A Codespace is VS Code in your browser, on a machine GitHub runs for you.
+Nothing is installed on your computer.
 
-### 2. Open a Codespace on **your** repository
+After you click `Create codespace on main` you see a build log for a few
+minutes, then the editor, then a terminal that prints the greeting. Closing
+the tab does not lose work. Open the Codespace again from `Code` →
+`Codespaces` and it resumes where you left off. To stop it yourself and save
+your allowance, use `Code` → `Codespaces` → `…` → `Stop codespace`.
 
-`Code` → `Codespaces` → `Create codespace on main`.
+GitHub's own pages cover the rest: the
+[Codespaces quickstart](https://docs.github.com/en/codespaces/getting-started/quickstart)
+and
+[stopping and starting a codespace](https://docs.github.com/en/codespaces/developing-in-a-codespace/stopping-and-starting-a-codespace).
 
-The first build takes a few minutes while it installs Docker, Python and Node.
-When the terminal appears it tells you exactly where you are and what to do.
+This is what the terminal looks like after the first build.
 
-### 3. Run `lab`
+<img src=".github/readme/terminal.svg" alt="The terminal after opening a Codespace: lab shows the module checklist, lab check reports Module 01 passes" width="100%">
 
-Everything after that is four commands, and the terminal reminds you of them:
+## The commands
 
 | Command | What it does |
 |---|---|
 | `lab` | Where you are and what to do next |
-| `lab explain` | Why this stage works the way it does, with the real protobuf |
-| `lab check` | Runs the real validator locally, in seconds |
-| `lab submit` | Branches, pushes, opens the pull request, waits for the verdict |
-| `lab share` | Opt in or out of anonymous progress reporting |
+| `lab explain` | Why this module works the way it does, with the real protobuf |
+| `lab check` | Runs the validator locally, in seconds. Nothing is pushed |
+| `lab submit` | Branches, pushes, opens the pull request and waits for the verdict |
+| `lab share` | Turns anonymous progress reporting on or off |
 
-`lab check` runs the identical code the bot runs, so a pass locally is a pass in
-CI. `lab submit` then waits for the bot, prints its comment where you are
-working, and moves you onto the next module once it merges — no `git pull`
-needed.
+`lab check` runs the same checks as the bot. If it passes locally, it passes in
+CI. `lab submit` waits for the bot, prints its comment in your terminal, and
+moves you to the next module once the pull request merges. You do not need to
+`git pull`.
 
 ---
 
-> **Already in your own copy and still seeing this page?** The welcome step did
-> not run. Nothing is broken — open the Codespace and run `lab`, which will tell
-> you where you are. To restore the guided README, run the **welcome** workflow
-> from the `Actions` tab.
+> **Already in your own copy and still seeing this page?** The welcome workflow
+> has not run. Nothing is broken. Open the Codespace and run `lab`; it tells you
+> where you are. To restore the guided README, run the `welcome` workflow from
+> the `Actions` tab.
 
 ## Sharing your progress (optional, off by default)
 
-The course collects nothing unless you turn it on. The first time you run
-`lab submit`, the tool asks once whether to share anonymous progress with the
-course authors — say nothing, or say no, and nothing is ever sent.
+The course sends no data unless you opt in. The first time you run
+`lab submit`, it asks whether to share anonymous progress with the course
+authors. Answer no, or ignore the prompt, and it sends nothing.
 
-If you opt in, then each time the bot grades a pull request **in your own
-repository** it sends:
+If you opt in, each time the bot grades a pull request in your repository it
+sends:
 
 - the module number, and whether it passed or failed;
 - the course name and template version;
-- a random ID generated for your copy (not derived from anything about you).
+- a random ID generated for your copy.
 
-It never sends your GitHub username, your repository name, or any of your code.
-It runs entirely from your own GitHub Actions, so you can read exactly what it
-sends in [`.lab/report.py`](.lab/report.py) — we host nothing and store nothing
-of our own; the event goes to Google Analytics and that is the only place it
-exists. None of it can affect your grade.
+The report contains no GitHub username, repository name, or code. It runs in
+your own GitHub Actions. [`.lab/report.py`](.lab/report.py) builds the payload
+and sends it. Motion Applied stores nothing; the event exists only in Google
+Analytics. It has no effect on your grade.
 
-Change your mind at any time (it takes effect on your next submit):
+Change the setting at any time. It takes effect on your next submit.
 
 ```bash
 lab share on       # start sharing
@@ -78,34 +95,33 @@ lab share off      # stop
 lab share status   # what it is set to now
 ```
 
-Full details, including what the site itself collects, are on the
-[privacy page](https://atlastelemetrylab.netlify.app/privacy/).
+The [privacy page](https://atlastelemetrylab.netlify.app/privacy/) covers this
+and what the site itself collects.
 
 ## What the modules teach
 
-The point is not "how to run Kafka". It is the things a bare topic and a
-time-series database have no concept of, and which you would otherwise rebuild
-by hand on every project.
+The course covers the layer between a Kafka topic and a time-series database.
+Neither provides it, and teams rebuild it by hand on every project.
 
-| Module | What you do | What it is really about |
+| Module | What you do | What it is about |
 |---|---|---|
-| 1 | Make it yours | **Sessions** — telemetry is not an anonymous window of time |
-| 2 | Add a channel | **Parameter definitions** — identity, units, range, rate, in-band |
-| 3 | Fix the broken producer | **Contiguous time** — a failure that reports success |
+| 1 | Make it yours | Sessions. A session has a name, a start, an end and a configuration |
+| 2 | Add a channel | Parameter definitions. Identity, units, range, rate, in-band |
+| 3 | Fix the broken producer | Contiguous time. A failure that reports success |
 | 4 | Write your first consumer | Reading a stream you were never told the shape of |
 
 ## Understanding it, not just passing it
 
-Every module has a `lab explain` topic behind it, and there are eight in total —
-sessions, parameters, timestamps, packets, configuration, streams, the Stream
-API and consumers.
+Each module has a `lab explain` topic behind it. There are eight topics in
+total: sessions, parameters, timestamps, packets, configuration, streams, the
+Stream API and consumers.
 
-Each one shows the **real protobuf definitions**, read out of this repository's
-own `.proto` files at run time, and each ends with how to apply the idea to
-systems of your own. The protocol details in them are checked against the
+Each topic shows the protobuf definitions, read from this repository's own
+`.proto` files at run time, and ends with how to apply the idea to your own
+systems. The protocol details are checked against the
 [Stream API](https://github.com/Software-Products/MA.DataPlatforms.StreamApi)
 and [Protocol](https://github.com/Software-Products/MA.DataPlatforms.Protocol)
-source, not written from memory.
+source.
 
 ```bash
 lab explain            # the topic behind the module you are on
@@ -120,12 +136,11 @@ lab explain --list     # all eight
 | `stream-api` | 13579 | Producers talk gRPC to this. |
 | `key-generator` | 15379 | Unique ids for sessions and configuration. |
 
-Roughly 440 MiB at idle — comfortably inside the smallest Codespace, and well
-inside the free tier for the length of the course.
+The three services use roughly 440 MiB at idle, which fits the smallest
+Codespace.
 
 ## Cost
 
-Nothing, to you or to us. Actions runs in your repository; on a public
-repository that is free. Codespaces draws on your own free allowance (120
-core-hours a month on a Free account, 180 on Pro, and students get Pro through
-the GitHub Education pack). The whole course is well under one hour of compute.
+Nothing. Actions runs in your repository, and it is free on a public
+repository. Codespaces uses your own free allowance: 120 core-hours a month on
+a Free account, 180 on Pro. Students get Pro through GitHub Education.
