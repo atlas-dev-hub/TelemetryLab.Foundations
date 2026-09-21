@@ -183,9 +183,10 @@ def share_prompt() -> None:
 
     print()
     print(f"  {BOLD}Share anonymous progress with the course authors? [y/N]{OFF}")
-    print("    When the bot grades a pull request it would send: the module number,")
-    print("    pass or fail, and a random ID for this copy of the course. Not your")
-    print("    username, not your code. It tells us which module people get stuck on.")
+    print("    If you say yes, each graded pull request sends the module number,")
+    print("    pass or fail, and a random ID for this copy of the course.")
+    print("    The report contains no username, repository name or code.")
+    print("    It tells us which module people get stuck on.")
     print(f"    Change it any time:  {BOLD}lab share off{OFF}   {DIM}(takes effect on your next submit){OFF}")
     print(f"    {DIM}Details: {PRIVACY_URL}{OFF}")
     print()
@@ -198,14 +199,14 @@ def share_prompt() -> None:
     st = state()
     if answer in ("y", "yes"):
         set_share(st, True)
-        print(f"  {GREEN}Sharing on.{OFF} {DIM}Thank you. `lab share off` turns it off again.{OFF}")
+        print(f"  {GREEN}Sharing on.{OFF} {DIM}Thank you. `lab share off` turns it off.{OFF}")
     else:
         # Recorded as a decision, not just a marker file, so a second machine
         # (or a rebuilt Codespace) does not ask again.
         st["share"] = {"enabled": False}
         save_state(st)
         open(SHARE_ASKED, "w").close()
-        print(f"  {DIM}Sharing off. `lab share on` if you change your mind.{OFF}")
+        print(f"  {DIM}Sharing off. `lab share on` turns it on.{OFF}")
     print()
 
 
@@ -216,18 +217,18 @@ def cmd_share(args) -> int:
 
     if mode == "on":
         set_share(st, True)
-        print(f"\n  {GREEN}Progress sharing on{OFF}, from your next `lab submit`."
-              f"  {DIM}lab share off{OFF} to stop.\n")
+        print(f"\n  {GREEN}Progress sharing on{OFF} from the next `lab submit`."
+              f"  {DIM}lab share off{OFF} stops it.\n")
         return 0
     if mode == "off":
         set_share(st, False)
-        print(f"\n  Progress sharing {BOLD}off{OFF}, from your next `lab submit`."
-              f"  {DIM}lab share on{OFF} to start again.\n")
+        print(f"\n  Progress sharing {BOLD}off{OFF} from the next `lab submit`."
+              f"  {DIM}lab share on{OFF} resumes it.\n")
         return 0
 
     print()
     if share is None:
-        print(f"  Progress sharing: {BOLD}off{OFF} {DIM}(you have not been asked yet; `lab submit` asks once){OFF}")
+        print(f"  Progress sharing: {BOLD}off{OFF} {DIM}(not asked yet; `lab submit` asks once){OFF}")
     elif share.get("enabled") is True:
         print(f"  Progress sharing: {GREEN}on{OFF}  {DIM}·  lab share off{OFF}")
     else:
@@ -235,7 +236,7 @@ def cmd_share(args) -> int:
     print()
     print("  When on, each time the bot grades a pull request it sends the module")
     print("  number, pass or fail, and a random ID for this copy of the course.")
-    print("  Never your username, repository name or code.")
+    print("  The report contains no username, repository name or code.")
     print(f"  {DIM}{PRIVACY_URL}{OFF}")
     print()
     return 0

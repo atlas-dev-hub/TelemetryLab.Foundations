@@ -4,7 +4,7 @@ Report one anonymous grading result to the course authors.
 
 Runs in the grading workflow, only if the learner opted in with `lab share on`.
 It sends the module number, pass or fail, a random per-copy ID and the
-template version. Never the username, repository name or any code.
+template version. The report contains no username, repository name or code.
 
 This must never fail a grade. Every exception is caught, the exit code is
 always 0, and the workflow step that runs it ignores the result anyway.
