@@ -69,24 +69,22 @@ lab
 
 </details>
 
-<details>
-<summary>Sharing progress (off unless you say yes)</summary>
+## Sharing your progress (optional, off by default)
 
-The first time you run `lab submit` it asks once whether to share anonymous
-progress with the course authors. If you say yes, each time the bot grades a
-pull request it sends: the module number, pass or fail, and a random ID for
-this copy of the course. Not your username, not your repository name, not your
-code. It tells us which module people get stuck on, and nothing else.
+This collects nothing unless you turn it on. The first time you run `lab
+submit`, it asks once whether to share anonymous progress with the course
+authors — say nothing, or say no, and nothing is ever sent.
 
-Change your mind at any time — it takes effect on your next `lab submit`:
+If you opt in, each time the bot grades a pull request it sends the module
+number, pass or fail, and a random ID for this copy of the course. Never your
+username, your repository name, or your code — you can read exactly what it
+sends in [`.lab/report.py`](.lab/report.py). Nothing about it can affect your
+grade.
 
 ```bash
-lab share off
-lab share on
-lab share        # what it is set to now
+lab share on       # start sharing
+lab share off      # stop  (takes effect on your next submit)
+lab share status   # what it is set to now
 ```
 
-Nothing about it can affect your grade. Details:
-<https://atlastelemetrylab.netlify.app/privacy/>
-
-</details>
+Details: <https://atlastelemetrylab.netlify.app/privacy/>

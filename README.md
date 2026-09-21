@@ -44,21 +44,42 @@ CI. `lab submit` then waits for the bot, prints its comment where you are
 working, and moves you onto the next module once it merges — no `git pull`
 needed.
 
-### Sharing progress
-
-Off unless you say yes. The first `lab submit` asks once. If you opt in, each
-time the bot grades a pull request it sends the module number, pass or fail,
-and a random ID for your copy of the course — not your username, not your
-repository name, not your code. It tells us which module people get stuck on.
-`lab share off` turns it off again from your next submit, and nothing about it
-can affect a grade. Details: <https://atlastelemetrylab.netlify.app/privacy/>
-
 ---
 
 > **Already in your own copy and still seeing this page?** The welcome step did
 > not run. Nothing is broken — open the Codespace and run `lab`, which will tell
 > you where you are. To restore the guided README, run the **welcome** workflow
 > from the `Actions` tab.
+
+## Sharing your progress (optional, off by default)
+
+The course collects nothing unless you turn it on. The first time you run
+`lab submit`, the tool asks once whether to share anonymous progress with the
+course authors — say nothing, or say no, and nothing is ever sent.
+
+If you opt in, then each time the bot grades a pull request **in your own
+repository** it sends:
+
+- the module number, and whether it passed or failed;
+- the course name and template version;
+- a random ID generated for your copy (not derived from anything about you).
+
+It never sends your GitHub username, your repository name, or any of your code.
+It runs entirely from your own GitHub Actions, so you can read exactly what it
+sends in [`.lab/report.py`](.lab/report.py) — we host nothing and store nothing
+of our own; the event goes to Google Analytics and that is the only place it
+exists. None of it can affect your grade.
+
+Change your mind at any time (it takes effect on your next submit):
+
+```bash
+lab share on       # start sharing
+lab share off      # stop
+lab share status   # what it is set to now
+```
+
+Full details, including what the site itself collects, are on the
+[privacy page](https://atlastelemetrylab.netlify.app/privacy/).
 
 ## What the modules teach
 
