@@ -141,6 +141,6 @@ Codespace.
 
 ## Cost
 
-Nothing. Actions runs in your repository, and it is free on a public
-repository. Codespaces uses your own free allowance: 120 core-hours a month on
-a Free account, 180 on Pro. Students get Pro through GitHub Education.
+Free. It runs in your own GitHub Codespace, which comes with 60 hours a month
+free. The course takes about one of them. Students get more through GitHub
+Education.
